@@ -1,0 +1,275 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1001 &1082966863709279433
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 3888925088906475285, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: m_ActionEvents.Array.size
+      value: 23
+      objectReference: {fileID: 0}
+    - target: {fileID: 3888925088906475285, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: m_ActionEvents.Array.data[3].m_ActionId
+      value: 67c4581d-fb13-48c8-9afd-49adcedc64ad
+      objectReference: {fileID: 0}
+    - target: {fileID: 3888925088906475285, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: m_ActionEvents.Array.data[4].m_ActionId
+      value: 454b9c43-b762-48bd-954d-e0fdcb74fb86
+      objectReference: {fileID: 0}
+    - target: {fileID: 3888925088906475285, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: m_ActionEvents.Array.data[5].m_ActionId
+      value: bee10e9a-92da-4a8e-b845-83402506e590
+      objectReference: {fileID: 0}
+    - target: {fileID: 3888925088906475285, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: m_ActionEvents.Array.data[6].m_ActionId
+      value: 75758fa5-e79e-4435-acda-4a0bf1b16117
+      objectReference: {fileID: 0}
+    - target: {fileID: 3888925088906475285, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: m_ActionEvents.Array.data[7].m_ActionId
+      value: d855a0cd-5f58-4413-9f95-8d3ddfd33668
+      objectReference: {fileID: 0}
+    - target: {fileID: 3888925088906475285, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: m_ActionEvents.Array.data[8].m_ActionId
+      value: 59bb5694-e7f5-4a90-be52-35fc23b0d04e
+      objectReference: {fileID: 0}
+    - target: {fileID: 3888925088906475285, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: m_ActionEvents.Array.data[9].m_ActionId
+      value: 51c54788-b86d-4f31-b0e2-565ae37eb850
+      objectReference: {fileID: 0}
+    - target: {fileID: 3888925088906475285, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: m_ActionEvents.Array.data[10].m_ActionId
+      value: 9c4c82b8-52eb-49c8-9454-934b6438bae3
+      objectReference: {fileID: 0}
+    - target: {fileID: 3888925088906475285, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: m_ActionEvents.Array.data[11].m_ActionId
+      value: 2172bc29-1eb6-4526-8a00-d4755a853809
+      objectReference: {fileID: 0}
+    - target: {fileID: 3888925088906475285, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: m_ActionEvents.Array.data[12].m_ActionId
+      value: 67b500f6-9bcb-49b2-92a9-e42f0f337a0d
+      objectReference: {fileID: 0}
+    - target: {fileID: 3888925088906475285, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: m_ActionEvents.Array.data[13].m_ActionId
+      value: 30581628-89bf-44f1-a4c9-8dfe44c47af8
+      objectReference: {fileID: 0}
+    - target: {fileID: 3888925088906475285, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: m_ActionEvents.Array.data[14].m_ActionId
+      value: 9be10be1-a478-4db5-9edd-af5c984094d3
+      objectReference: {fileID: 0}
+    - target: {fileID: 3888925088906475285, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: m_ActionEvents.Array.data[15].m_ActionId
+      value: 79796c3a-15da-4b44-a735-52d4d8955952
+      objectReference: {fileID: 0}
+    - target: {fileID: 3888925088906475285, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: m_ActionEvents.Array.data[16].m_ActionId
+      value: d480e14c-5f97-43c4-8a55-fe5c5d05d7de
+      objectReference: {fileID: 0}
+    - target: {fileID: 3888925088906475285, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: m_ActionEvents.Array.data[17].m_ActionId
+      value: f116be51-a48f-4e58-ad7e-fd9a996effbe
+      objectReference: {fileID: 0}
+    - target: {fileID: 3888925088906475285, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: m_ActionEvents.Array.data[18].m_ActionId
+      value: a3e523c2-12a2-49c4-a270-75d4419f5d9a
+      objectReference: {fileID: 0}
+    - target: {fileID: 3888925088906475285, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: m_ActionEvents.Array.data[19].m_ActionId
+      value: 4dfbcaae-e3c3-461e-8b26-9f47d4d9d94f
+      objectReference: {fileID: 0}
+    - target: {fileID: 3888925088906475285, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: m_ActionEvents.Array.data[20].m_ActionId
+      value: 84b9812b-8bf0-4adb-b95c-84767284e8bc
+      objectReference: {fileID: 0}
+    - target: {fileID: 3888925088906475285, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: m_ActionEvents.Array.data[21].m_ActionId
+      value: 2fee38ea-e1a8-4271-8ff8-e56aaf21ca1f
+      objectReference: {fileID: 0}
+    - target: {fileID: 3888925088906475285, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: m_ActionEvents.Array.data[22].m_ActionId
+      value: d9669b06-7a73-47c3-a2ed-e4d586c0b5d7
+      objectReference: {fileID: 0}
+    - target: {fileID: 3888925088906475285, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: m_ActionEvents.Array.data[3].m_ActionName
+      value: 'Robot/Stow[/Keyboard/c]'
+      objectReference: {fileID: 0}
+    - target: {fileID: 3888925088906475285, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: m_ActionEvents.Array.data[4].m_ActionName
+      value: 'Robot/Place[/Keyboard/k]'
+      objectReference: {fileID: 0}
+    - target: {fileID: 3888925088906475285, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: m_ActionEvents.Array.data[5].m_ActionName
+      value: 'Robot/Intake[/Keyboard/shift,/XInputControllerWindows/leftTrigger]'
+      objectReference: {fileID: 0}
+    - target: {fileID: 3888925088906475285, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: m_ActionEvents.Array.data[6].m_ActionName
+      value: 'Robot/L1[/XInputControllerWindows/buttonSouth,/Keyboard/x]'
+      objectReference: {fileID: 0}
+    - target: {fileID: 3888925088906475285, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: m_ActionEvents.Array.data[7].m_ActionName
+      value: 'Robot/AutoAlignLeft[/XInputControllerWindows/leftShoulder,/Keyboard/q]'
+      objectReference: {fileID: 0}
+    - target: {fileID: 3888925088906475285, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: m_ActionEvents.Array.data[8].m_ActionName
+      value: 'Robot/AutoAlignRight[/XInputControllerWindows/rightShoulder,/Keyboard/e]'
+      objectReference: {fileID: 0}
+    - target: {fileID: 3888925088906475285, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: m_ActionEvents.Array.data[9].m_ActionName
+      value: 'Robot/Climb[/XInputControllerWindows/dpad/down]'
+      objectReference: {fileID: 0}
+    - target: {fileID: 3888925088906475285, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: m_ActionEvents.Array.data[10].m_ActionName
+      value: 'Robot/IntakeModeToggle[/XInputControllerWindows/dpad/left]'
+      objectReference: {fileID: 0}
+    - target: {fileID: 3888925088906475285, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: m_ActionEvents.Array.data[11].m_ActionName
+      value: 'Robot/RobotSpecial[/Keyboard/v,<Gamepad>/dpad/right,<XInputController>/dpad/right,<DualShockGamepad>/dpad/right]'
+      objectReference: {fileID: 0}
+    - target: {fileID: 3888925088906475285, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: m_ActionEvents.Array.data[12].m_ActionName
+      value: 'Robot/Restart[/Keyboard/1,/XInputControllerWindows/start]'
+      objectReference: {fileID: 0}
+    - target: {fileID: 3888925088906475285, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: m_ActionEvents.Array.data[13].m_ActionName
+      value: 'Robot/Pause[/Keyboard/escape,/XInputControllerWindows/select]'
+      objectReference: {fileID: 0}
+    - target: {fileID: 3888925088906475285, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: m_ActionEvents.Array.data[14].m_ActionName
+      value: 'Robot/RobotModeToggle[/Keyboard/semicolon]'
+      objectReference: {fileID: 0}
+    - target: {fileID: 3888925088906475285, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: m_ActionEvents.Array.data[15].m_ActionName
+      value: 'Robot/DriverStationMovement[/Keyboard/upArrow,/Keyboard/downArrow,/Keyboard/leftArrow,/Keyboard/rightArrow]'
+      objectReference: {fileID: 0}
+    - target: {fileID: 3888925088906475285, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: m_ActionEvents.Array.data[16].m_ActionName
+      value: Robot/RightStickModifier
+      objectReference: {fileID: 0}
+    - target: {fileID: 3888925088906475285, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: m_ActionEvents.Array.data[17].m_ActionName
+      value: 'Robot/DriveSpeed1[/Keyboard/1]'
+      objectReference: {fileID: 0}
+    - target: {fileID: 3888925088906475285, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: m_ActionEvents.Array.data[18].m_ActionName
+      value: 'Robot/DriveSpeed2[/Keyboard/2]'
+      objectReference: {fileID: 0}
+    - target: {fileID: 3888925088906475285, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: m_ActionEvents.Array.data[19].m_ActionName
+      value: 'Robot/DriveSpeed3[/Keyboard/3]'
+      objectReference: {fileID: 0}
+    - target: {fileID: 3888925088906475285, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: m_ActionEvents.Array.data[20].m_ActionName
+      value: 'Robot/RobotSpecial2[/Gamepad/buttonWest,/Keyboard/i]'
+      objectReference: {fileID: 0}
+    - target: {fileID: 3888925088906475285, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: m_ActionEvents.Array.data[21].m_ActionName
+      value: 'Robot/RobotSpecial3[/Gamepad/buttonEast,/Keyboard/o]'
+      objectReference: {fileID: 0}
+    - target: {fileID: 3888925088906475285, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: m_ActionEvents.Array.data[22].m_ActionName
+      value: 'Robot/DpadR[/Keyboard/x]'
+      objectReference: {fileID: 0}
+    - target: {fileID: 3907796793276222132, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: m_Name
+      value: Breakaway
+      objectReference: {fileID: 0}
+    - target: {fileID: 7705159093392549457, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7705159093392549457, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7705159093392549457, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7705159093392549457, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7705159093392549457, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7705159093392549457, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7705159093392549457, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7705159093392549457, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7705159093392549457, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7705159093392549457, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: fac5411432a8c96498487f1fffc06c74, type: 3}

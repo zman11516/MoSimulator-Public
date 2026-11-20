@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: be1409438a6844eea96767966da7413b, type: 3}
+  m_Name: Breakaway
+  m_EditorClassIdentifier: 
+  teamNumber: 3937
+  teamName: Breakaway
+  robotImage: {fileID: 0}
+  mainRobot:
+    displayName: Breakaway
+    robotPrefab: {fileID: 4124225120133373565, guid: c821a2d2722c14344874f063f29d340d,
+      type: 3}
+    mainMenuPrefab: {fileID: 7449178992152932579, guid: bd9ea444880e47b499d83e4ab520e9bb,
+      type: 3}
+    spawnSelectionPrefab: {fileID: 1076655121521327079, guid: cb9e018429be09944858cda484e3376f,
+      type: 3}
+    preloadGamePiece: {fileID: 0}
+    tutorialCards:
+    - {fileID: 6409404358357736411, guid: 7639a8fda68e07c48ae9a91b99b409c3, type: 3}
+    - {fileID: 4773922047750097119, guid: 847cead8f8266a142b452afa339fbf18, type: 3}
+    - {fileID: 3994382445434485137, guid: 7c401b441fa753d4fbed021aeb550ae0, type: 3}
+  alternateRobots: []

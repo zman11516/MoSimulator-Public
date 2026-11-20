@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: be1409438a6844eea96767966da7413b, type: 3}
+  m_Name: BombSquad
+  m_EditorClassIdentifier: 
+  teamNumber: 16
+  teamName: Bomb Squad
+  robotImage: {fileID: 0}
+  mainRobot:
+    displayName: Bomb Squad
+    robotPrefab: {fileID: 4939448321364500005, guid: dec985895b45bc34b9cc3368bfc84605,
+      type: 3}
+    mainMenuPrefab: {fileID: 6029551524861962566, guid: 6f1fd958490ff1a4da1a6a209da8113b,
+      type: 3}
+    spawnSelectionPrefab: {fileID: 6301945760042850147, guid: c0f78be1e8100824f8e8d50f1fefcd65,
+      type: 3}
+    preloadGamePiece: {fileID: 0}
+    tutorialCards:
+    - {fileID: 6744170229033602200, guid: f5716a9bb129ec24a86b55267ced1acb, type: 3}
+    - {fileID: 3072593947939695530, guid: cb4790fe1660b904586a342296910765, type: 3}
+    - {fileID: 7104516794630932271, guid: 3e6fe4f01cd0bf7438f6ded6a4498930, type: 3}
+  alternateRobots: []

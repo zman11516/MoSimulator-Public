@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: be1409438a6844eea96767966da7413b, type: 3}
+  m_Name: Obsidian
+  m_EditorClassIdentifier: 
+  teamNumber: 5454
+  teamName: Obsidian
+  robotImage: {fileID: 0}
+  mainRobot:
+    displayName: Obsidian
+    robotPrefab: {fileID: 1529674973660865538, guid: 0d9e9c52c9e8a0d4db9a45b34a8062dd,
+      type: 3}
+    mainMenuPrefab: {fileID: 8922007733709828739, guid: 49016033eb6993f42abf4f73ac34454c,
+      type: 3}
+    spawnSelectionPrefab: {fileID: 2635993323459606895, guid: 8463b7f94586c1a4ebee12b9892fd8a4,
+      type: 3}
+    preloadGamePiece: {fileID: 0}
+    tutorialCards:
+    - {fileID: 671105203138331571, guid: ce7cbed02c2e79e42a7fd8b290019e43, type: 3}
+    - {fileID: 2088398358071591233, guid: 8cf0552e42a90bc4d98e4435003867af, type: 3}
+    - {fileID: 4818991739367663309, guid: 6745fba18c5ddc44ba6b1eb303eb8a8f, type: 3}
+  alternateRobots: []
