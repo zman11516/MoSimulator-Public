@@ -383,6 +383,250 @@ namespace MoSim.EditorTools
             return log.ToString();
         }
 
+        // InteractionRoller spins each model with Transform.Rotate about the model's OWN pivot. CAD meshes keep their
+        // pivot at the assembly origin, so an off-axis pivot makes the part orbit instead of spin. Fix: give each such
+        // model a pivot parent on the roller's axis (roller frame, so it turns about local X) and spin that instead.
+        // Leaves belts (no models) and already-centred models alone. Run: MoSim.EditorTools.BreakawaySetup.FixRollerPivots
+        [MenuItem("Tools/Modding/Breakaway: Fix Roller Pivots")]
+        static void FixPivotsMenu() => Debug.Log(FixRollerPivots());
+
+        public static string FixRollerPivots()
+        {
+            var stage = PrefabStageUtility.OpenPrefab(PrefabPath);
+            if (stage == null) return "ERROR could not open " + PrefabPath;
+            GameObject root = stage.prefabContentsRoot;
+            var log = new StringBuilder();
+            int fixedCount = 0, ok = 0;
+            foreach (var roller in root.GetComponentsInChildren<InteractionRoller>(true))
+            {
+                var so = new SerializedObject(roller);
+                if (so.FindProperty("useBeltMode").boolValue) continue;
+                var models = so.FindProperty("models");
+                Vector3 p = roller.transform.position, d = roller.transform.right;
+                for (int i = 0; i < models.arraySize; i++)
+                {
+                    var entry = models.GetArrayElementAtIndex(i);
+                    var model = entry.FindPropertyRelative("model").objectReferenceValue as GameObject;
+                    if (model == null) continue;
+                    Vector3 offAxis = Vector3.ProjectOnPlane(model.transform.position - p, d);
+                    if (offAxis.magnitude < 0.002f) { ok++; continue; }
+                    var r = model.GetComponent<Renderer>();
+                    Vector3 c = r ? r.bounds.center : model.transform.position;
+                    Vector3 onAxis = p + Vector3.Project(c - p, d);
+                    var pivot = new GameObject(model.name + " Pivot");
+                    pivot.transform.SetParent(model.transform.parent, false);
+                    pivot.transform.SetPositionAndRotation(onAxis, roller.transform.rotation);
+                    pivot.layer = model.layer;
+                    model.transform.SetParent(pivot.transform, true);
+                    entry.FindPropertyRelative("model").objectReferenceValue = pivot;
+                    entry.FindPropertyRelative("jointAxis").enumValueIndex = 0;   // roller turns about its local X
+                    entry.FindPropertyRelative("reversed").boolValue = false;
+                    fixedCount++;
+                    log.AppendLine($"  {roller.name}: {model.name} was {offAxis.magnitude * 1000f:F0} mm off the axis");
+                }
+                so.ApplyModifiedPropertiesWithoutUndo();
+            }
+            PrefabUtility.SaveAsPrefabAsset(root, PrefabPath, out bool saved);
+            if (saved) stage.ClearDirtiness();
+            return $"roller models re-pivoted onto their axis: {fixedCount}, already on axis: {ok}\n{log}" +
+                   (saved ? "SAVED " + PrefabPath : "ERROR save failed");
+        }
+
+        // ---- hood + hopper extension (added after the first setup; edits the existing prefab, keeps hand-made changes)
+        // Hood: the SH-11/SH-12 adjustable plates and everything they carry pivot on the SH-16 shaft (the gear train
+        // from the 18t gear drives into SH-16, so it must be the pivot). Hopper extension: the clear walls Part 15 /
+        // Part 15.001 / Part 16 (+ Part 77 brackets) telescope inside the DT-39 walls; the CAD has them extended.
+        static readonly string[] HoodParts =
+        {
+            "SH-11 Adjustable Shooter plate Left", "SH-12 Adjustable Shooter plate Right", "SH-16", "SH-17", "SH-18", "SH-19",
+            "SH-21", "SH-21.001", "SH-22", "SH-23", "SH-26", "SH-26.001", "SH-26.002", "SH-28", "SH-29", "SH-30", "SH-31.008",
+            "SH-35", "10t Steel Spur Gear (10 DP, 1/2\" Hex Bore)", "10t Steel Spur Gear (10 DP, 1/2\" Hex Bore).001",
+            "32t Aluminum Spur Gear (20 DP, 1/2\" Hex Bore)", "32t Aluminum Spur Gear (20 DP, 1/2\" Hex Bore).001",
+            "32t Aluminum Spur Gear (20 DP, 1/2\" Hex Bore).002", "24t Aluminum Pulley (HTD 5mm, 9mm Wide, 1/2\" Hex Bore)",
+            "24t Aluminum Pulley (HTD 5mm, 9mm Wide, 1/2\" Hex Bore).001", "24t Aluminum Pulley (HTD 5mm, 9mm Wide, 1/2\" Hex Bore).003",
+            "45T 5M 9mm Wide Belt", "1.625\" Flex Wheel (40A, 1/2\" Wide, 1/2\" Hex Stretch Bore)",
+            "1.625\" Flex Wheel (40A, 1/2\" Wide, 1/2\" Hex Stretch Bore).001", "1.625\" Flex Wheel (40A, 1/2\" Wide, 1/2\" Hex Stretch Bore).002",
+            "1.625\" Flex Wheel (40A, 1/2\" Wide, 1/2\" Hex Stretch Bore).003",
+            "am-3949 2.25N OverMolded 500Hex Compliant Wheel V6.002", "am-3949 2.25N OverMolded 500Hex Compliant Wheel V6.003",
+        };
+        const string HoodPivotShaft = "SH-16";
+        static readonly string[] HopperParts = { "Part 15", "Part 15.001", "Part 16", "Part 77", "Part 77.001" };
+        const string FrameFrontRail = "DT-02 Front Drive rail";
+        static readonly (float d, float deg)[] HoodMap = { (2.5f, 0f), (3.9f, 12f), (4.5f, 17f), (6f, 24f), (8f, 30f) };
+
+        public static string AddHoodAndHopper()
+        {
+            var stage = PrefabStageUtility.OpenPrefab(PrefabPath);
+            if (stage == null) return "ERROR could not open " + PrefabPath;
+            GameObject root = stage.prefabContentsRoot;
+            var log = new StringBuilder();
+            if (root.transform.Find("Turret/Hood") || root.transform.Find("Hopper Extension"))
+                return "Hood / Hopper Extension already exist: nothing changed";
+            Transform turretT = root.transform.Find("Turret"), driveT = root.transform.Find("Drive"), intakeT = root.transform.Find("Intake");
+            if (!turretT || !driveT || !intakeT) return "ERROR Turret / Drive / Intake subsystem missing";
+            var robot = root.GetComponents<MonoBehaviour>().FirstOrDefault(m => m && m.GetType().Name == "Breakaway");
+            var robotSo = robot ? new SerializedObject(robot) : null;
+            if (robotSo == null || robotSo.FindProperty("hoodJoint") == null) return "ERROR Breakaway script missing or not recompiled";
+
+            // ---- hood
+            var shaft = turretT.GetComponentsInChildren<Renderer>(true).FirstOrDefault(r => r.name == HoodPivotShaft);
+            if (shaft == null) return "ERROR hood pivot shaft SH-16 not found";
+            Vector3 sz = shaft.bounds.size;
+            Vector3 axis = sz.x >= sz.y && sz.x >= sz.z ? Vector3.right : sz.y >= sz.z ? Vector3.up : Vector3.forward;
+            var hood = new GameObject("Hood");
+            hood.transform.SetParent(turretT, false);
+            hood.transform.SetPositionAndRotation(shaft.bounds.center, Quaternion.FromToRotation(Vector3.right, axis));
+            var moved = MoveParts(turretT, hood.transform, HoodParts, log);
+            log.AppendLine($"Hood: pivot on SH-16 at {hood.transform.localPosition}, axis {axis}, {moved.Count} parts moved");
+
+            // ---- hopper extension: start retracted so the front wall sits at the frame's front rail
+            var hop = new GameObject("Hopper Extension");
+            hop.transform.SetParent(root.transform, false);
+            var front = intakeT.GetComponentsInChildren<Renderer>(true).FirstOrDefault(r => r.name == "Part 16");
+            var rail = driveT.GetComponentsInChildren<Renderer>(true).FirstOrDefault(r => r.name == FrameFrontRail);
+            if (front == null || rail == null) return "ERROR Part 16 or the front drive rail not found\n" + log;
+            hop.transform.SetPositionAndRotation(front.bounds.center, Quaternion.identity);
+            var hopMoved = MoveParts(intakeT, hop.transform, HopperParts, log);
+            float retract = front.bounds.max.z - rail.bounds.max.z;   // robot forward = +Z
+            hop.transform.position -= new Vector3(0f, 0f, retract);
+            log.AppendLine($"Hopper Extension: {hopMoved.Count} parts, retracted {retract * 1000f:F0} mm into the frame");
+
+            // ---- joints (docs: Generic Joints): hood on the turret body, hopper linear on the robot body
+            AddJoint(hood, turretT.GetComponent<Rigidbody>(), ConfigurableJointMotion.Free, ConfigurableJointMotion.Locked, 1f, false);
+            var hj = hop.AddComponent<GenericJoint>();
+            var hrb = hop.GetComponent<Rigidbody>(); hrb.mass = 1f;
+            var cj = hop.GetComponent<ConfigurableJoint>();
+            cj.connectedBody = root.GetComponent<Rigidbody>();
+            cj.anchor = Vector3.zero; cj.axis = Vector3.right; cj.secondaryAxis = Vector3.up;
+            cj.xMotion = cj.yMotion = ConfigurableJointMotion.Locked; cj.zMotion = ConfigurableJointMotion.Free;
+            cj.angularXMotion = cj.angularYMotion = cj.angularZMotion = ConfigurableJointMotion.Locked;
+
+            robotSo.FindProperty("hoodJoint").objectReferenceValue = hood.GetComponent<GenericJoint>();
+            robotSo.FindProperty("hopperJoint").objectReferenceValue = hj;
+            robotSo.FindProperty("hopperExtendedDistance").floatValue = retract / 0.0254f;
+            SetPid(robotSo, "hoodPid", 0.5f, 0f, 0.1f, 4f);        // docs' angular starting values
+            SetPid(robotSo, "hopperPid", 15f, 0f, 0.1f, 3f);       // docs' linear starting values
+            var map = robotSo.FindProperty("hoodInterpolation.interpolationMap");
+            map.arraySize = HoodMap.Length;
+            for (int i = 0; i < HoodMap.Length; i++)
+            {
+                map.GetArrayElementAtIndex(i).FindPropertyRelative("distance").floatValue = HoodMap[i].d;
+                map.GetArrayElementAtIndex(i).FindPropertyRelative("value").floatValue = HoodMap[i].deg;
+            }
+            robotSo.ApplyModifiedPropertiesWithoutUndo();
+            log.AppendLine($"linked hoodJoint, hopperJoint (extends {retract / 0.0254f:F1} in), PIDs, hood map ({HoodMap.Length} points)");
+
+            PrefabUtility.SaveAsPrefabAsset(root, PrefabPath, out bool saved);
+            if (saved) stage.ClearDirtiness();
+            return log + (saved ? "SAVED " + PrefabPath : "ERROR save failed");
+        }
+
+        // Moves the named meshes (or their roller pivot parents), the colliders fitted to them, and any roller whose
+        // models all moved, from under `from` to under `to` (world positions kept).
+        static List<Transform> MoveParts(Transform from, Transform to, string[] names, StringBuilder log)
+        {
+            var set = new HashSet<string>(names);
+            var meshes = from.GetComponentsInChildren<MeshRenderer>(true).Where(r => set.Contains(r.name) && !r.transform.IsChildOf(to)).ToList();
+            var bounds = meshes.Select(r => r.bounds).ToList();
+            var moved = new List<Transform>();
+            foreach (var r in meshes)
+            {
+                Transform t = r.transform;
+                if (t.parent && t.parent.name == t.name + " Pivot") t = t.parent;   // roller model pivot from FixRollerPivots
+                t.SetParent(to, true); moved.Add(t);
+            }
+            int cols = 0;
+            foreach (var c in from.GetComponentsInChildren<Collider>(true).Where(c => !c.transform.IsChildOf(to)).ToList())
+            {
+                Bounds cb = c.bounds;
+                if (bounds.Any(b => (b.center - cb.center).magnitude < 0.01f && (b.size - cb.size).magnitude < 0.03f))
+                { c.transform.SetParent(to, true); cols++; }
+            }
+            int rollers = 0;
+            foreach (var roller in from.GetComponentsInChildren<InteractionRoller>(true).Where(r => !r.transform.IsChildOf(to)).ToList())
+            {
+                var models = new SerializedObject(roller).FindProperty("models");
+                var objs = Enumerable.Range(0, models.arraySize)
+                    .Select(i => models.GetArrayElementAtIndex(i).FindPropertyRelative("model").objectReferenceValue as GameObject).ToList();
+                if (objs.Count > 0 && objs.All(o => o && o.transform.IsChildOf(to))) { roller.transform.SetParent(to, true); rollers++; }
+            }
+            int missing = names.Length - meshes.Count;
+            log.AppendLine($"  -> {to.name}: {meshes.Count} meshes, {cols} colliders, {rollers} rollers" + (missing > 0 ? $" ({missing} names not found)" : ""));
+            return moved;
+        }
+
+        // GenericJoint reads linear position as transform.localPosition and expects 0 at rest (docs: offset parent
+        // rule); angular joints expect local rotation 0 except about their axis. Wraps a joint object in an offset
+        // parent carrying its pose so its own local position / rotation are zero. Fixes Hopper Extension and Hood.
+        public static string FixJointOffsets()
+        {
+            var stage = PrefabStageUtility.OpenPrefab(PrefabPath);
+            if (stage == null) return "ERROR could not open " + PrefabPath;
+            GameObject root = stage.prefabContentsRoot;
+            var log = new StringBuilder();
+            foreach (string path in new[] { "Hopper Extension", "Turret/Hood", "Intake Arm", "Turret" })
+            {
+                Transform j = root.transform.Find(path);
+                if (j == null) { log.AppendLine($"{path}: not found"); continue; }
+                bool needsPos = path == "Hopper Extension" && j.localPosition.sqrMagnitude > 1e-8f;
+                bool needsRot = Quaternion.Angle(j.localRotation, Quaternion.identity) > 0.01f;
+                if (!needsPos && !needsRot) { log.AppendLine($"{path}: already zeroed"); continue; }
+                var offset = new GameObject(j.name + " Offset");
+                offset.transform.SetParent(j.parent, false);
+                offset.transform.localPosition = j.localPosition;
+                offset.transform.localRotation = j.localRotation;
+                offset.transform.SetSiblingIndex(j.GetSiblingIndex());
+                j.SetParent(offset.transform, true);
+                j.localPosition = Vector3.zero; j.localRotation = Quaternion.identity;
+                log.AppendLine($"{path}: wrapped in '{offset.name}' (was pos {offset.transform.localPosition}, rot {offset.transform.localEulerAngles})");
+            }
+            PrefabUtility.SaveAsPrefabAsset(root, PrefabPath, out bool saved);
+            if (saved) stage.ClearDirtiness();
+            return log + (saved ? "SAVED " + PrefabPath : "ERROR save failed");
+        }
+
+        // Links the RollerGroup made only of belts (the kicker belts added by hand) to Breakaway.kickerBelts.
+        public static string LinkKickerBelts()
+        {
+            var stage = PrefabStageUtility.OpenPrefab(PrefabPath);
+            if (stage == null) return "ERROR could not open " + PrefabPath;
+            GameObject root = stage.prefabContentsRoot;
+            var beltGroups = root.GetComponentsInChildren<RollerGroup>(true).Where(g =>
+            {
+                // the group's own member list (not its children: a roller of another group can sit under it)
+                var members = new SerializedObject(g).FindProperty("rollers");
+                var rollers = Enumerable.Range(0, members.arraySize)
+                    .Select(i => members.GetArrayElementAtIndex(i).FindPropertyRelative("IntRoller").objectReferenceValue as InteractionRoller)
+                    .ToList();
+                return rollers.Count > 0 && rollers.All(r => r && new SerializedObject(r).FindProperty("useBeltMode").boolValue);
+            }).ToList();
+            if (beltGroups.Count != 1)
+            {
+                var sb = new StringBuilder($"ERROR expected one belt-only roller group, found {beltGroups.Count}; nothing changed\n");
+                foreach (var g in root.GetComponentsInChildren<RollerGroup>(true))
+                {
+                    var members = new SerializedObject(g).FindProperty("rollers");
+                    sb.Append($"  group {g.name} ({g.transform.parent?.name}): children ");
+                    sb.Append(string.Join(", ", g.GetComponentsInChildren<InteractionRoller>(true)
+                        .Select(r => r.name + (new SerializedObject(r).FindProperty("useBeltMode").boolValue ? "[belt]" : ""))));
+                    sb.AppendLine($"; serialized members {members?.arraySize}");
+                }
+                return sb.ToString();
+            }
+            var robot = root.GetComponents<MonoBehaviour>().FirstOrDefault(m => m && m.GetType().Name == "Breakaway");
+            if (robot == null) return "ERROR no Breakaway script on the prefab root";
+            var so = new SerializedObject(robot);
+            var prop = so.FindProperty("kickerBelts");
+            if (prop == null) return "ERROR Breakaway has no kickerBelts field (not recompiled yet?)";
+            prop.objectReferenceValue = beltGroups[0];
+            so.ApplyModifiedPropertiesWithoutUndo();
+            beltGroups[0].gameObject.name = "Kicker Belt Group";
+            PrefabUtility.SaveAsPrefabAsset(root, PrefabPath, out bool saved);
+            if (saved) stage.ClearDirtiness();
+            return $"kickerBelts -> {beltGroups[0].name} ({beltGroups[0].GetComponentsInChildren<InteractionRoller>(true).Length} belts)\n" +
+                   (saved ? "SAVED " + PrefabPath : "ERROR save failed");
+        }
+
         static string RunMenu(string item, Object[] selection)
         {
             if (selection.Length == 0) return item + ": nothing selected";
