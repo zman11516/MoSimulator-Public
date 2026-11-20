@@ -3,73 +3,149 @@ using Games.Rebuilt.Robots;
 using MoSimLib;
 using RobotFramework.Components;
 using RobotFramework.Controllers.PidSystems;
+using RobotFramework.Enums;
 using UnityEngine;
 
-public class Breakaway : RebuiltRobotBase
+// FRC 3937 Breakaway: turret shooter (fixed hood angle), pivoting over-the-bumper intake, roller-bed hopper,
+// feeder tower. No climber in the CAD. Built on the docs' Rebuilt turret template (RebuiltTurretRobot):
+// zone dispatch (AllianceZone / NeutralZone) and shooter dispatch (Intaking / Shooting / ... / Feed) come from the base.
+public class Breakaway : RebuiltTurretRobot
 {
-    // Joints and rollers: add serialized GenericJoint / RollerGroup references here.
+    [Header("Joints")]
+    [SerializeField] private GenericTurret turret;        // "Turret": GenericJoint (Y axis) + GenericTurret
+    [SerializeField] private GenericJoint intakeJoint;    // "Intake Arm": GenericJoint (X axis), CAD pose = deployed
 
-    // PIDs: add serialized PidConstants here.
+    [Header("Rollers")]
+    // Roller groups (made by Guess Interaction Roller; each roller's running rpm and motor are set in the Inspector)
+    [SerializeField] private RollerGroup intakeRollers;   // intake tubes on the arm
+    [SerializeField] private RollerGroup hopperRollers;   // roller-bed floor rollers
+    [SerializeField] private RollerGroup feederRollers;   // feeder tower rollers + flex wheels
+    [SerializeField] private RollerGroup kickerRollers;   // flex wheels feeding the shooter wheels
+    [SerializeField] private RollerGroup shooterWheels;   // urethane shooter wheels, brass flywheel, compliant wheels
 
-    // Interpolations: add serialized RebuiltInterpolation references here.
+    [Header("PIDs")]
+    [SerializeField] private PidConstants turretPid;
+    [SerializeField] private PidConstants intakePid;
 
-    // Mechanism values: add serialized angles, distances, and speeds here.
+    [Header("Interpolation")]
+    [SerializeField] private RebuiltInterpolation flywheelInterpolation;   // distance (m) -> shooter rpm
 
-    // Runtime state: add target positions, toggles, and the auto-aim controller here.
+    [Header("Mechanism Values")]
+    [SerializeField] private float intakeDeployedAngle = 0f;      // the CAD pose is deployed
+    [SerializeField] private float intakeStowedAngle = -100f;     // folded up over the hopper (flip the sign if it swings down)
+    [SerializeField] private float manualShooterRpm = 3000f;
+    [SerializeField] private float turretTolerance = 5f;          // degrees
+
+    private float _intakeTarget;
+    private bool _intakeDeployed;
 
     protected override void Init()
     {
-        // TODO: Set initial PIDs, targets, and toggles; initialize interpolation maps.
+        // Registers HandleSwm, zone dispatch, and shooter-state dispatch exactly once.
+        base.Init();
+        turret.SetPid(turretPid);
+        intakeJoint.SetPid(intakePid);
+        flywheelInterpolation.Initialize(this);
+        _intakeDeployed = false;
+        _intakeTarget = intakeStowedAngle;
 
-        Scheduler.AddSubsystems(Intake, Hopper, Shooter, HandleAutoAim, Climber);
+        Scheduler.AddSubsystems(IntakeArm);
         Scheduler.AddProtectedSystem(UpdateJoints);
         Scheduler.AddLateRecursive(UpdatePids);
     }
 
     private void UpdatePids()
     {
-        // TODO: Update each joint's PID constants for live tuning.
+        turret.UpdatePid(turretPid);
+        intakeJoint.UpdatePid(intakePid);
     }
 
-    private void Climber()
+    private void IntakeArm()
     {
-        // TODO: Read ClimbAction and choose the climber target.
-    }
-
-    private void Intake()
-    {
-        // TODO: Read IntakeAction / StowAction and control deployment and rollers.
-        // Call WobbleIntake() here if the mechanism supports it.
-    }
-
-    private void Hopper()
-    {
-        // TODO: Choose the hopper target and indexer behavior.
-    }
-
-    private void HandleAutoAim()
-    {
-        // TODO: Select hub / pass targeting and request auto-aim.
-    }
-
-    private void Shooter()
-    {
-        // TODO: Gate feeding on shooting inputs and alignment; set flywheel / hood targets.
-        // Call SetInterpMap() when selecting the shot's interpolation maps.
-    }
-
-    private void SetInterpMap()
-    {
-        // TODO: Select the hub / pass maps for the flywheel and hood.
+        if (IntakeAction) _intakeDeployed = true;
+        if (StowAction) _intakeDeployed = false;
+        _intakeTarget = _intakeDeployed ? intakeDeployedAngle : intakeStowedAngle;
     }
 
     private void UpdateJoints()
     {
-        // TODO: Apply the target positions chosen by the subsystems to the joints.
+        turret.Align();
+        // the prefab holds the arm in its CAD (deployed) pose: that pose reads as intakeDeployedAngle
+        intakeJoint.SetTargetAngle(_intakeTarget).withAxis(JointAxis.X).useCustomStartingOffset(intakeDeployedAngle);
     }
 
-    private void WobbleIntake()
+    protected override void HandleSwm()
     {
-        // TODO: Adjust the intake target to clear a jam or agitate fuel.
+        // Assign the inherited swmRef (with a parent) and swmSettings in the Inspector.
+        if (rb != null && swmRef != null && swmRef.parent != null)
+        {
+            base.HandleSwm();
+        }
+    }
+
+    // ---- aiming: the turret tracks the hub in the alliance zone and the closest pass target elsewhere
+    protected override void AllianceZone()
+    {
+        turret.SetDefaultMap(GenericTurret.DefaultMap.Hub);
+        flywheelInterpolation.SetDefaultMap(DefaultMap.Hub);
+    }
+
+    protected override void NeutralZone()
+    {
+        turret.SetPassMapClosest();
+        flywheelInterpolation.SetPassMapClosest();
+    }
+
+    // ---- rollers: each runs at its Inspector rpm unless stopped here (Stop() lasts one frame)
+    protected override void Intaking()
+    {
+        // intake + hopper run; nothing reaches the shooter
+        feederRollers.Stop();
+        kickerRollers.Stop();
+        shooterWheels.SetRpm(0f);
+    }
+
+    protected override void IntakingAndShooting()
+    {
+        SpinUpAndHold();
+    }
+
+    protected override void Shooting()
+    {
+        intakeRollers.Stop();
+        SpinUpAndHold();
+    }
+
+    protected override void Feed()
+    {
+        // Aligned(): leave the feeder, kicker and hopper running (no Stop this frame)
+    }
+
+    protected override void Idling()
+    {
+        intakeRollers.Stop();
+        hopperRollers.Stop();
+        feederRollers.Stop();
+        kickerRollers.Stop();
+        shooterWheels.SetRpm(0f);
+    }
+
+    protected override bool Aligned()
+    {
+        float error = turret.GetError();
+        bool atSpeed = shooterWheels.AtSpeed();
+        return Mathf.Abs(error) < turretTolerance && atSpeed;
+    }
+
+    private void SpinUpAndHold()
+    {
+        float rpm = ManualShoot ? manualShooterRpm : (float)flywheelInterpolation.Interpolate();
+        shooterWheels.SetRpm(rpm);
+        if (!Aligned())
+        {
+            // hold fuel until the turret is on target and the wheels are at speed
+            feederRollers.Stop();
+            kickerRollers.Stop();
+        }
     }
 }

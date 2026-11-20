@@ -1,0 +1,464 @@
+// One-shot setup of the Breakaway (FRC 3937) robot prefab, following docs.mosimulator.com (Initial Robot Setup,
+// Drivetrain Setup). Run from Tools > Modding > Setup Breakaway (3937), or the UnityLive bridge:
+// MoSim.EditorTools.BreakawaySetup.Run
+// 1. FBX instance -> unpack completely -> drop the hidden REVIEW parts and the game piece
+// 2. stand it upright (Y up, intake toward +Z), drivetrain centre on the root, wheels on the drivetrain's wheel contact
+// 3. extract the subsystems (Drive / Shooter / Intake), delete the CAD container, Auto Organize
+// 4. Guess Generic Collider (Box Only: rollers and round parts get none) on parts larger than 5 cm, Auto Organize again
+// 3b. pivot objects: "Turret" (bearing-ring centre) holds the shooter, "Intake Arm" (MotionX hub axis) holds the arm
+// 4b. Guess Interaction Roller (Merge Inline) per roller set -> one RollerGroup each, linked to the Breakaway script
+// 4c. GenericJoints (turret Y + GenericTurret aimed from an SWM reference, intake arm X), PIDs, flywheel interpolation
+// 5. DriveController values and swerve module positions (SDS MK5n-style modules, Kraken X60)
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using RobotFramework.Components;
+using RobotFramework.Controllers.Drivetrain;
+using UnityEditor;
+using UnityEditor.SceneManagement;
+using UnityEngine;
+
+namespace MoSim.EditorTools
+{
+    internal static class BreakawaySetup
+    {
+        const string Dir = "Assets/Prefabs/Games/Rebuilt/Robots/Mods/Arkansas Modpack/Breakaway/";
+        const string PrefabPath = Dir + "Breakaway.prefab";
+        const string FbxPath = Dir + "2026.2 Robot Design - simplified.fbx";
+
+        // hidden / duplicate / replaced parts from the simplification report (REVIEW collections) + the game piece
+        static readonly string[] Review =
+        {
+            "0.25\" ID Bearing (0.5\" OD, 0.188\" WD, Shielded).005",
+            "0.5\" ID Bearing (0.875\" OD, 0.281\" WD, Shielded).001",
+            "0.5\" ID Bearing (0.875\" OD, 0.281\" WD, Shielded).003",
+            "0.5\" ID Bearing (0.875\" OD, 0.281\" WD, Shielded).004",
+            "0.5\" ID Bearing (0.875\" OD, 0.281\" WD, Shielded).005",
+            "0.5\" ID Bearing (0.875\" OD, 0.281\" WD, Shielded).006",
+            "0.5\" ID Bearing (0.875\" OD, 0.281\" WD, Shielded).008",
+            "0.5\" ID Bearing (0.875\" OD, 0.281\" WD, Shielded).009",
+            "0.5\" ID Bearing (0.875\" OD, 0.281\" WD, Shielded).010",
+            "0.5\" ID Bearing (0.875\" OD, 0.281\" WD, Shielded).012",
+            "0.5\" ID Bearing (0.875\" OD, 0.281\" WD, Shielded).013",
+            "0.5\" ID Bearing (0.875\" OD, 0.281\" WD, Shielded).015",
+            "0.5\" ID Bearing (0.875\" OD, 0.281\" WD, Shielded).017",
+            "0.5\" ID Bearing (0.875\" OD, 0.281\" WD, Shielded).022",
+            "0.5\" ID Bearing (0.875\" OD, 0.281\" WD, Shielded).025",
+            "0.5\" ID Bearing (0.875\" OD, 0.281\" WD, Shielded).028",
+            "0.5\" ID Bearing (0.875\" OD, 0.281\" WD, Shielded).029",
+            "0.5\" ID Bearing (0.875\" OD, 0.281\" WD, Shielded).030",
+            "0.5\" ID Bearing (1.125\" OD, 0.313\" WD, Shielded)",
+            "0.5\" ID Bearing (1.125\" OD, 0.313\" WD, Shielded).002",
+            "1.625\" Flex Wheel (40A, 1/2\" Wide, 1/2\" Hex Stretch Bore).006",
+            "1.625\" Flex Wheel (40A, 1/2\" Wide, 1/2\" Hex Stretch Bore).009",
+            "3088A429_Carbon Steel Shim.001",
+            "3088A429_Carbon Steel Shim.002",
+            "3088A429_Carbon Steel Shim.003",
+            "3088A429_Carbon Steel Shim.004",
+            "3088A429_Carbon Steel Shim.005",
+            "3088A429_Carbon Steel Shim.006",
+            "3088A429_Carbon Steel Shim.007",
+            "3088A429_Carbon Steel Shim.008",
+            "3088A429_Carbon Steel Shim.009",
+            "3088A429_Carbon Steel Shim.010",
+            "3088A429_Carbon Steel Shim.013",
+            "3088A429_Carbon Steel Shim.014",
+            "3088A429_Carbon Steel Shim.016",
+            "3088A429_Carbon Steel Shim.017",
+            "3088A429_Carbon Steel Shim.018",
+            "3088A429_Carbon Steel Shim.020",
+            "3088A429_Carbon Steel Shim.021",
+            "3088A429_Carbon Steel Shim.023",
+            "3088A429_Carbon Steel Shim.024",
+            "3088A429_Carbon Steel Shim.025",
+            "3088A429_Carbon Steel Shim.027",
+            "3088A429_Carbon Steel Shim.028",
+            "3088A429_Carbon Steel Shim.029",
+            "3088A429_Carbon Steel Shim.030",
+            "3088A429_Carbon Steel Shim.031",
+            "IN-29 Spacer",
+            "Kraken X60 Brushless Motor.009",
+            "Part 1",
+            "Part 81.002",
+            "am-3949 2.25N OverMolded 500Hex Compliant Wheel V6",
+            "am-3949 2.25N OverMolded 500Hex Compliant Wheel V6.001"
+        };
+
+        static readonly (string cad, string name)[] Subsystems =
+        {
+            ("Drivetrain Roller Bed Assembly Copy 1 <1>", "Drive"),
+            ("Turrett Shooter V3 <1>", "Shooter"),
+            ("V3 Comp Intake Assembly <1>", "Intake"),
+        };
+
+        // swerve drive motors (three module corners) -> drivetrain centre
+        static readonly string[] DriveMotors =
+            { "Kraken X60 Brushless Motor.005", "Kraken X60 Brushless Motor.006", "Kraken X60 Brushless Motor.010" };
+
+        const float HalfTrackX = 0.265f, HalfBaseZ = 0.25f;   // module centres (CAD): 530 x 500 mm
+
+        // InteractionRoller.RollerMotor order (for the log only)
+        enum RollerMotorName { FullSize, Medium, Small, Tiny, Shooter, Unstable }
+
+        // roller sets: Breakaway field, subsystem, part-name pattern, motor (RollerMotor index), running rpm, roller name
+        static readonly (string field, string sub, string names, int motor, float rpm, string label)[] RollerSets =
+        {
+            // IN-42 Big Tube.001 is the arm's pivot tube (sprocket-driven), not a roller
+            ("intakeRollers", "Intake Arm", @"^(IN-42 Big Tube|Part 5|Part 6)$",                          0, 2500f, "Intake Roller"),
+            ("hopperRollers", "Drive",      @"^Part 67(\.\d{3})?$",                                        1, 1200f, "Hopper Roller"),
+            ("feederRollers", "Drive",      @"^(Part 73|Part 80|Part 77\.002|DT-104)$|Flex Wheel",         1, 2500f, "Feeder Roller"),
+            ("kickerRollers", "Turret",     @"Flex Wheel",                                                 1, 3000f, "Kicker Roller"),
+            ("shooterWheels", "Turret",     @"Solid Urethane Wheel|Brass Flywheel|^am-3949",               4, 3500f, "Shooter Wheel"),
+        };
+
+        // moving mechanisms (CAD names): the turret turns on its 267 mm bearing ring (vertical axis through the ring
+        // centre); the intake arm ("Intake V3 Assembly <1>") pivots on the axis through its two MotionX hubs
+        const string TurretRing = "a64fbb17d93e9dac33c44939c0b4de06_ap214";
+        const string IntakeArmCad = "Intake V3 Assembly <1>";
+        static readonly string[] IntakeHubs =
+            { "1/2\" Hex MotionX Hub (1.125\" OD, #10-32 Clearance)", "1/2\" Hex MotionX Hub (1.125\" OD, #10-32 Clearance).001" };
+
+        // flywheel rpm by distance to the target (m); start values, tune in play mode
+        static readonly (float d, float rpm)[] FlywheelMap = { (2.2f, 1600f), (3.2f, 1950f), (3.9f, 2350f), (4.1f, 2550f), (5.5f, 3500f), (8f, 6000f) };
+
+        [MenuItem("Tools/Modding/Setup Breakaway (3937)")]
+        static void MenuEntry() => Debug.Log(Run());
+
+        public static string Run()
+        {
+            var log = new StringBuilder();
+            // the FBX may have been replaced on disk: import it now so the instance below is the current file
+            AssetDatabase.ImportAsset(FbxPath, ImportAssetOptions.ForceUpdate | ImportAssetOptions.ForceSynchronousImport);
+            var fbxCheck = AssetDatabase.LoadAssetAtPath<GameObject>(FbxPath);
+            int meshCount = fbxCheck ? fbxCheck.GetComponentsInChildren<MeshFilter>(true).Length : 0;
+            if (meshCount < 100) return $"ERROR the FBX has only {meshCount} mesh(es): re-export it with its meshes; nothing changed";
+            log.AppendLine($"FBX: {meshCount} meshes");
+            var stage = PrefabStageUtility.OpenPrefab(PrefabPath);
+            if (stage == null) return "ERROR could not open " + PrefabPath;
+            GameObject root = stage.prefabContentsRoot;
+            if (root.transform.Find("Drive") != null) return "Breakaway already has a Drive subsystem: nothing changed";
+            foreach (var (cad, _) in Subsystems)
+                if (root.transform.Find(cad) != null)
+                    return $"ERROR '{cad}' is already in Breakaway (inherited from the BaseRobot template?): restore BaseRobot first; nothing changed";
+
+            var fbx = AssetDatabase.LoadAssetAtPath<GameObject>(FbxPath);
+            if (fbx == null) return "ERROR FBX not found: " + FbxPath;
+            var inst = (GameObject)PrefabUtility.InstantiatePrefab(fbx, stage.scene);
+            PrefabUtility.UnpackPrefabInstance(inst, PrefabUnpackMode.Completely, InteractionMode.AutomatedAction);
+            inst.transform.SetParent(root.transform, false);
+
+            // 1. hidden parts
+            var drop = new HashSet<string>(Review);
+            int removed = 0;
+            foreach (var t in inst.GetComponentsInChildren<Transform>(true).Where(t => t != inst.transform && drop.Contains(t.name)).ToList())
+                if (t) { Object.DestroyImmediate(t.gameObject); removed++; }
+            log.AppendLine($"removed {removed} hidden/duplicate parts");
+
+            // 2. scale, orientation, position
+            Bounds b = WorldBounds(inst);
+            float big = Mathf.Max(b.size.x, b.size.y, b.size.z);
+            float s = Mathf.Pow(10f, Mathf.Round(Mathf.Log10(1.084f / big)));
+            if (!Mathf.Approximately(s, 1f)) { inst.transform.localScale *= s; log.AppendLine($"unit scale x{s}"); }
+            Transform intake = Find(inst.transform, Subsystems[2].cad), turret = Find(inst.transform, Subsystems[1].cad);
+            if (intake == null || turret == null) { Object.DestroyImmediate(inst); return "ERROR intake/turret assemblies not found in the FBX\n" + log; }
+            Quaternion bestQ = Quaternion.identity; float best = float.MaxValue;
+            foreach (Quaternion q in AxisRotations())
+            {
+                inst.transform.localRotation = q;
+                Bounds all = WorldBounds(inst), bi = WorldBounds(intake.gameObject), bt = WorldBounds(turret.gameObject);
+                float score = Mathf.Abs(all.size.y - 0.61f) * 10f + (bi.center.z > all.center.z ? 0f : 5f) + (bt.center.y > bi.center.y ? 0f : 5f);
+                if (score < best) { best = score; bestQ = q; }
+            }
+            inst.transform.localRotation = bestQ;
+            b = WorldBounds(inst);
+            log.AppendLine($"orientation {bestQ.eulerAngles} size {b.size.x:F3} x {b.size.y:F3} x {b.size.z:F3} (score {best:F2})");
+
+            var motors = inst.GetComponentsInChildren<Renderer>(true).Where(r => DriveMotors.Contains(r.name)).Select(r => r.bounds).ToList();
+            Vector3 centre = b.center;
+            if (motors.Count >= 3)
+            {
+                float x0 = motors.Min(m => m.center.x), x1 = motors.Max(m => m.center.x), z0 = motors.Min(m => m.center.z), z1 = motors.Max(m => m.center.z);
+                centre = new Vector3((x0 + x1) / 2f, 0f, (z0 + z1) / 2f);
+            }
+            else log.AppendLine("WARNING swerve drive motors not found: centred on the bounding box");
+
+            var dc = root.GetComponent<DriveController>();
+            if (dc == null) { Object.DestroyImmediate(inst); return "ERROR no DriveController on the Breakaway root (BaseRobot template?)\n" + log; }
+            var so = new SerializedObject(dc);
+            var dtParent = so.FindProperty("drivetrainParent").objectReferenceValue as GameObject;
+            float floor = 0f;
+            var wheels = dtParent ? dtParent.GetComponentsInChildren<WheelCollider>(true) : new WheelCollider[0];
+            if (wheels.Length > 0) floor = wheels.Min(w => w.transform.TransformPoint(w.center).y - w.radius);
+            inst.transform.position += new Vector3(-centre.x, floor - b.min.y, -centre.z);
+            log.AppendLine($"drivetrain centre moved to the root; wheel contact y {floor:F4}");
+
+            // 3. subsystems
+            var subs = new List<GameObject>();
+            foreach (var (cad, name) in Subsystems)
+            {
+                Transform t = Find(inst.transform, cad);
+                if (t == null) { log.AppendLine("WARNING missing " + cad); continue; }
+                t.SetParent(root.transform, true); t.name = name; subs.Add(t.gameObject);
+            }
+            var rest = inst.GetComponentsInChildren<MeshRenderer>(true);
+            if (rest.Length > 0)
+            {
+                var st = new GameObject("Stationary"); st.transform.SetParent(root.transform, false);
+                foreach (var r in rest) r.transform.SetParent(st.transform, true);
+                subs.Add(st); log.AppendLine($"Stationary: {rest.Length} loose parts");
+            }
+            Object.DestroyImmediate(inst);
+
+            // 3b. moving mechanisms get pivot objects (identity rotation: docs' offset-parent rule), made subsystems
+            GameObject turretGo = null, armGo = null;
+            GameObject shooter = subs.FirstOrDefault(g => g.name == "Shooter");
+            Renderer ring = shooter ? shooter.GetComponentsInChildren<Renderer>(true).FirstOrDefault(r => r.name == TurretRing) : null;
+            if (shooter && ring)
+            {
+                turretGo = Pivot(root, "Turret", ring.bounds.center);
+                shooter.transform.SetParent(turretGo.transform, true);
+                subs[subs.IndexOf(shooter)] = turretGo;
+                log.AppendLine($"Turret pivot at {turretGo.transform.localPosition} (bearing ring centre)");
+            }
+            else log.AppendLine("WARNING turret ring not found: no turret joint");
+            GameObject intakeSub = subs.FirstOrDefault(g => g.name == "Intake");
+            Transform arm = intakeSub ? Find(intakeSub.transform, IntakeArmCad) : null;
+            var hubs = intakeSub ? intakeSub.GetComponentsInChildren<Renderer>(true).Where(r => IntakeHubs.Contains(r.name)).ToList() : new List<Renderer>();
+            if (arm && hubs.Count == 2)
+            {
+                armGo = Pivot(root, "Intake Arm", (hubs[0].bounds.center + hubs[1].bounds.center) / 2f);
+                arm.SetParent(armGo.transform, true);
+                subs.Add(armGo);
+                Vector3 axis = (hubs[1].bounds.center - hubs[0].bounds.center).normalized;
+                log.AppendLine($"Intake Arm pivot at {armGo.transform.localPosition}, hub axis {axis} (expects ~X)");
+            }
+            else log.AppendLine("WARNING intake arm or its hubs not found: no intake joint");
+
+            log.AppendLine(RunMenu("GameObject/Auto Organize", subs.Cast<Object>().ToArray()));
+
+            // 4. colliders (docs: Guess Generic Colliders; Box Only keeps rollers free of colliders)
+            foreach (var sub in subs)
+            {
+                var targets = sub.GetComponentsInChildren<MeshFilter>(true)
+                    .Where(m => m.sharedMesh != null && m.GetComponent<Renderer>() && MaxExtent(m.GetComponent<Renderer>().bounds) > 0.05f)
+                    .Select(m => (Object)m.gameObject).ToArray();
+                log.AppendLine($"{sub.name}: " + RunMenu("GameObject/Guess Generic Collider (Box Only)", targets));
+            }
+            log.AppendLine(RunMenu("GameObject/Auto Organize", subs.Cast<Object>().ToArray()));
+            int colliders = subs.Sum(g => g.GetComponentsInChildren<Collider>(true).Length);
+            log.AppendLine($"colliders in the subsystems: {colliders}");
+
+            // 4b. rollers (docs: "For rollers that move together, select the group ... Guess Interaction Roller").
+            // Each set is its own run, so each gets its own RollerGroup; the robot script drives the groups.
+            var robotType = System.AppDomain.CurrentDomain.GetAssemblies().Select(a => a.GetType("Breakaway"))
+                .FirstOrDefault(t => t != null && typeof(MonoBehaviour).IsAssignableFrom(t));
+            Component robot = robotType == null ? null : (root.GetComponent(robotType) ?? root.AddComponent(robotType));
+            var robotSo = robot ? new SerializedObject(robot) : null;
+            if (robot == null) log.AppendLine("WARNING Breakaway script type not found: roller groups not linked");
+            foreach (var set in RollerSets)
+            {
+                GameObject sub = subs.FirstOrDefault(g => g.name == set.sub);
+                if (sub == null) { log.AppendLine($"WARNING no {set.sub} subsystem for {set.field}"); continue; }
+                var targets = sub.GetComponentsInChildren<MeshFilter>(true)
+                    .Where(m => m.sharedMesh != null && System.Text.RegularExpressions.Regex.IsMatch(m.gameObject.name, set.names))
+                    .Select(m => (Object)m.gameObject).ToArray();
+                var groupsBefore = new HashSet<RollerGroup>(root.GetComponentsInChildren<RollerGroup>(true));
+                var rollersBefore = new HashSet<InteractionRoller>(root.GetComponentsInChildren<InteractionRoller>(true));
+                string res = RunMenu("GameObject/Guess Interaction Roller (Merge Inline)", targets);
+                var newGroups = root.GetComponentsInChildren<RollerGroup>(true).Where(g => !groupsBefore.Contains(g)).ToList();
+                var newRollers = root.GetComponentsInChildren<InteractionRoller>(true).Where(r => !rollersBefore.Contains(r)).ToList();
+                foreach (var r in newRollers)
+                {
+                    var rs = new SerializedObject(r);
+                    rs.FindProperty("motor").intValue = set.motor;
+                    rs.FindProperty("rpm").floatValue = set.rpm;
+                    rs.ApplyModifiedPropertiesWithoutUndo();
+                    r.gameObject.name = set.label;
+                }
+                foreach (var g in newGroups) g.gameObject.name = set.label + " Group";
+                if (robotSo != null && newGroups.Count > 0) robotSo.FindProperty(set.field).objectReferenceValue = newGroups[0];
+                log.AppendLine($"{set.field}: {res}; {newRollers.Count} roller(s), {newGroups.Count} group(s), {(RollerMotorName)set.motor} {set.rpm} rpm");
+            }
+            log.AppendLine(RunMenu("GameObject/Auto Organize", subs.Cast<Object>().ToArray()));   // docs: re-run at the end
+
+            // 4c. joints (docs: Generic Joints, Turret): GenericJoint adds the Rigidbody + ConfigurableJoint; connected
+            // body = the robot; every axis locked except the moving one. Turret: Y axis, automatic centre of mass off,
+            // mass >= 5, GenericTurret. Intake arm: X axis.
+            var robotRb = root.GetComponent<Rigidbody>();
+            if (turretGo)
+            {
+                AddJoint(turretGo, robotRb, ConfigurableJointMotion.Locked, ConfigurableJointMotion.Free, 5f, true);
+                var gt = turretGo.GetComponent<GenericTurret>() ?? turretGo.AddComponent<GenericTurret>();
+                // shoot-while-moving: the turret aims from swmRef, which the base class leads by velocity x time of flight
+                var anchor = new GameObject("SWM Anchor"); anchor.transform.SetParent(root.transform, false);
+                anchor.transform.position = turretGo.transform.position;
+                var swmRef = new GameObject("SWM Ref"); swmRef.transform.SetParent(anchor.transform, false);
+                var gts = new SerializedObject(gt);
+                gts.FindProperty("referencePoint").objectReferenceValue = swmRef.transform;
+                gts.FindProperty("trackContinuously").boolValue = true;
+                gts.ApplyModifiedPropertiesWithoutUndo();
+                if (robotSo != null)
+                {
+                    robotSo.FindProperty("turret").objectReferenceValue = gt;
+                    robotSo.FindProperty("swmRef").objectReferenceValue = swmRef.transform;
+                    robotSo.FindProperty("swmSettings.timeOfFlight").floatValue = 0.8f;
+                    robotSo.FindProperty("swmSettings.velocityDampeningValue").floatValue = 0.15f;
+                    robotSo.FindProperty("swmSettings.shootingDriveMultiplier").floatValue = 0.5f;
+                    SetPid(robotSo, "turretPid", 0.5f, 0f, 0.1f, 4f);
+                }
+                log.AppendLine("Turret: GenericJoint (Y) + GenericTurret, reference point = SWM Ref");
+            }
+            if (armGo)
+            {
+                AddJoint(armGo, robotRb, ConfigurableJointMotion.Free, ConfigurableJointMotion.Locked, 2f, false);
+                if (robotSo != null)
+                {
+                    robotSo.FindProperty("intakeJoint").objectReferenceValue = armGo.GetComponent<GenericJoint>();
+                    SetPid(robotSo, "intakePid", 0.5f, 0f, 0.1f, 4f);
+                }
+                log.AppendLine("Intake Arm: GenericJoint (X), CAD pose = deployed (0), stowed -100 deg");
+            }
+            if (robotSo != null)
+            {
+                var map = robotSo.FindProperty("flywheelInterpolation.interpolationMap");
+                map.arraySize = FlywheelMap.Length;
+                for (int i = 0; i < FlywheelMap.Length; i++)
+                {
+                    map.GetArrayElementAtIndex(i).FindPropertyRelative("distance").floatValue = FlywheelMap[i].d;
+                    map.GetArrayElementAtIndex(i).FindPropertyRelative("value").floatValue = FlywheelMap[i].rpm;
+                }
+                log.AppendLine($"flywheel interpolation: {FlywheelMap.Length} points");
+            }
+            robotSo?.ApplyModifiedPropertiesWithoutUndo();
+
+            // 5. drive controller (docs: Drivetrain Setup)
+            so.Update();
+            so.FindProperty("drivetrainType").intValue = 0;                 // Swerve
+            so.FindProperty("maxOmega").floatValue = 0f;                    // kinematic limit
+            so.FindProperty("motor.motorType").intValue = 1;                // KrakenX60_FOC
+            so.FindProperty("motor.config.K_p").floatValue = 0.5f;
+            so.FindProperty("motor.config.K_v").floatValue = 0.13f;
+            so.FindProperty("motor.config.StatorLimit").floatValue = 100f;
+            so.FindProperty("motor.config.SupplyLimit").floatValue = 40f;
+            so.FindProperty("realWorldWeightLbs").floatValue = 135f;        // match weight incl. battery + bumpers (estimate)
+            so.FindProperty("motorsPerPowertrain").intValue = 1;
+            so.FindProperty("gearRatio").floatValue = 6.03f;                // SDS MK5n R2 (estimate)
+            so.FindProperty("wheelDiameterInches").floatValue = 4f;
+            so.FindProperty("mechanicalLossPercent").floatValue = 2.5f;
+            so.FindProperty("frictionCoefficient").floatValue = 1.3f;
+            so.FindProperty("biteFactor").floatValue = 0.25f;
+            so.FindProperty("contactPatchWidthInches").floatValue = 1.5f;
+            so.FindProperty("contactTolerance").floatValue = 0.01f;
+            so.FindProperty("lateralGripResponse").floatValue = 0.1f;
+            so.ApplyModifiedPropertiesWithoutUndo();
+            var mv = typeof(DriveController).GetField("maxVelocity", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            mv.SetValue(dc, (MoSimLib.SecureFloat)4.6f);                    // reachable m/s (free speed ~5.3)
+            PrefabUtility.RecordPrefabInstancePropertyModifications(dc);
+            EditorUtility.SetDirty(dc);
+            log.AppendLine("DriveController set (Swerve, Kraken X60 FOC, 6.03:1, 4 in wheels, 135 lb, 4.6 m/s)");
+
+            if (dtParent)
+            {
+                int moved = 0;
+                foreach (string group in new[] { "Wheels", "Raycast" })
+                {
+                    Transform g = dtParent.transform.Find(group);
+                    if (g == null) continue;
+                    foreach (Transform w in g)
+                    {
+                        if (!(w.name.Length == 2 && "FB".Contains(w.name[0]) && "LR".Contains(w.name[1]))) continue;
+                        float sx = w.name[1] == 'L' ? -1f : 1f, sz = w.name[0] == 'F' ? 1f : -1f;
+                        w.localPosition = new Vector3(sx * HalfTrackX, w.localPosition.y, sz * HalfBaseZ);
+                        PrefabUtility.RecordPrefabInstancePropertyModifications(w);
+                        moved++;
+                    }
+                }
+                log.AppendLine($"swerve modules placed at +-{HalfTrackX} x +-{HalfBaseZ} m ({moved} transforms)");
+            }
+
+            PrefabUtility.SaveAsPrefabAsset(root, PrefabPath, out bool ok);
+            if (ok) stage.ClearDirtiness();   // already saved: leaving the stage must not open a "save changes?" dialog
+            StageUtility.GoToMainStage();
+            log.AppendLine(ok ? "SAVED " + PrefabPath : "ERROR save failed");
+            return log.ToString();
+        }
+
+        static string RunMenu(string item, Object[] selection)
+        {
+            if (selection.Length == 0) return item + ": nothing selected";
+            // ToolRegistry drops repeat runs of a tool until the next editor tick (Unity dispatches GameObject/
+            // commands once per selected object); each call here is a separate pass, so clear that guard first
+            var registry = System.AppDomain.CurrentDomain.GetAssemblies().Select(a => a.GetType("Editor.ToolRegistry")).FirstOrDefault(t => t != null);
+            var running = registry?.GetField("Running", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)?.GetValue(null);
+            running?.GetType().GetMethod("Clear")?.Invoke(running, null);
+            Selection.objects = selection;
+            bool ran = EditorApplication.ExecuteMenuItem(item);
+            Selection.objects = new Object[0];
+            return item + (ran ? $": ran on {selection.Length} object(s)" : ": UNAVAILABLE");
+        }
+
+        static float MaxExtent(Bounds b) => Mathf.Max(b.size.x, b.size.y, b.size.z);
+
+        static GameObject Pivot(GameObject root, string name, Vector3 worldPos)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(root.transform, false);
+            go.transform.position = worldPos;
+            go.transform.localRotation = Quaternion.identity;
+            return go;
+        }
+
+        static void AddJoint(GameObject go, Rigidbody connected, ConfigurableJointMotion angX, ConfigurableJointMotion angY,
+                             float mass, bool fixedCentreOfMass)
+        {
+            if (!go.GetComponent<GenericJoint>()) go.AddComponent<GenericJoint>();   // RequireComponent adds Rigidbody + ConfigurableJoint
+            var rb = go.GetComponent<Rigidbody>();
+            rb.mass = mass;
+            if (fixedCentreOfMass) rb.centerOfMass = Vector3.zero;                    // setting it turns the automatic one off
+            var cj = go.GetComponent<ConfigurableJoint>();
+            cj.connectedBody = connected;
+            cj.anchor = Vector3.zero;
+            cj.axis = Vector3.right;
+            cj.secondaryAxis = Vector3.up;
+            cj.xMotion = cj.yMotion = cj.zMotion = ConfigurableJointMotion.Locked;
+            cj.angularXMotion = angX;
+            cj.angularYMotion = angY;
+            cj.angularZMotion = ConfigurableJointMotion.Locked;
+        }
+
+        static void SetPid(SerializedObject so, string field, float p, float i, float d, float max)
+        {
+            so.FindProperty(field + ".kP").floatValue = p;
+            so.FindProperty(field + ".kI").floatValue = i;
+            so.FindProperty(field + ".kD").floatValue = d;
+            so.FindProperty(field + ".Max").floatValue = max;
+            so.FindProperty(field + ".Isaturation").floatValue = 0f;
+        }
+
+        static Bounds WorldBounds(GameObject go)
+        {
+            var rs = go.GetComponentsInChildren<Renderer>(true);
+            Bounds b = rs.Length > 0 ? rs[0].bounds : new Bounds(go.transform.position, Vector3.zero);
+            foreach (var r in rs) b.Encapsulate(r.bounds);
+            return b;
+        }
+
+        static Transform Find(Transform t, string name)
+        {
+            if (t.name == name) return t;
+            foreach (Transform c in t) { var f = Find(c, name); if (f) return f; }
+            return null;
+        }
+
+        static IEnumerable<Quaternion> AxisRotations()
+        {
+            var seen = new List<Quaternion>();
+            for (int x = 0; x < 4; x++) for (int y = 0; y < 4; y++) for (int z = 0; z < 4; z++)
+            {
+                Quaternion q = Quaternion.Euler(x * 90, y * 90, z * 90);
+                if (seen.Any(p => Quaternion.Angle(p, q) < 1f)) continue;
+                seen.Add(q); yield return q;
+            }
+        }
+    }
+}
