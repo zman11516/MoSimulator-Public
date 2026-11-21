@@ -49,13 +49,30 @@ public class Breakaway : RebuiltTurretRobot
 
     [Header("Mechanism Values")]
     [SerializeField] private float intakeDeployedAngle = 0f;      // the CAD pose is deployed
-    [SerializeField] private float intakeStowedAngle = -100f;     // folded up over the hopper (flip the sign if it swings down)
+    [SerializeField] private float intakeStowedAngle = -120f;     // folded back over the hopper: 20.4" tall (at -100 the arm
+                                                                  // stood 21.6", ~1 cm under the trench bar, and wedged)
     [SerializeField] private float hopperExtendedDistance = 12f;  // inches the extension slides out (set from the CAD)
     [SerializeField] private float hoodMaxAngle = 40f;            // degrees from the CAD pose
     [SerializeField] private float hoodStowAngle = -25f;          // stowed hood angle when not shooting (to clear the trench)
     [SerializeField] private float manualHoodAngle = 15f;
     [SerializeField] private float manualShooterRpm = 3000f;
     [SerializeField] private float turretTolerance = 1.5f;        // degrees (roller-physics mode only)
+    [SerializeField] private float trenchClearDistance = 0.8f;    // m before the trench bar: hood forced down, no firing
+
+    [Header("Hopper Agitation")]
+    // While shooting (and not intaking) for agitateDelay seconds, a deployed intake arm swings between deployed and
+    // agitateAngle, pushing fuel in the hopper back toward the feeder; the intake rollers turn slowly inward meanwhile.
+    [SerializeField] private bool agitateWhileShooting = true;
+    [SerializeField] private float agitateDelay = 1.5f;           // s after shooting starts
+    [SerializeField] private float agitateAngle = -40f;           // arm angle at the top of each swing (stowed side)
+    [SerializeField] private float agitateHalfPeriod = 0.4f;      // s per swing direction
+    [SerializeField] private float agitateRollerDivider = 4f;     // intake rollers at 1/4 speed while agitating
+    // A deployed intake whose rollers were fully stopped left the front of the hopper open: fuel rolled back out of
+    // it while driving / agitating with a full hopper. Like 1706, a deployed intake keeps turning slowly inward.
+    // Play-mode probe: fuel left lying in the intake mouth (on the floor under the arm) when intake was released; at
+    // 1/5 speed the rollers could not lift it over, and it rolled out when the robot backed up.
+    [SerializeField] private float holdRollerDivider = 2f;        // deployed, not intaking: intake rollers at 1/2 speed
+    [SerializeField] private float intakeRunOn = 1f;              // s at full speed after intake is released (clears the mouth)
 
     [Header("Direct Launch")]
     [SerializeField] private bool directLaunch = true;
@@ -90,6 +107,16 @@ public class Breakaway : RebuiltTurretRobot
     private bool _hopperOut;
     private bool _hopperLocked;
     private bool _passing;
+    private bool _wasShooting;
+    private float _shootStart;
+    private bool _agitating;
+    private bool _agitateUp;
+    private float _agitateSwitch;
+
+    private float _intakeRunOnUntil;
+
+    private bool ShootHeld =>OuttakeAction || ManualShoot || AutoPass;
+    private bool NearTrench() => turret != null && UnderTrench(turret.transform, trenchClearDistance);
 
     private float _nextLaunch;
     private float _lastFlightTime;
@@ -175,9 +202,32 @@ public class Breakaway : RebuiltTurretRobot
 
     private void IntakeArm()
     {
-        if (IntakeAction) _intakeDeployed = true;
+        if (IntakeAction)
+        {
+            _intakeDeployed = true;
+            _intakeRunOnUntil = Time.time + intakeRunOn;   // keeps refreshing while held; counts down on release
+        }
         if (StowAction) _intakeDeployed = false;
-        _intakeTarget = _intakeDeployed ? intakeDeployedAngle : intakeStowedAngle;
+
+        bool shoot = ShootHeld;
+        if (shoot && !_wasShooting) _shootStart = Time.time;
+        _wasShooting = shoot;
+        _agitating = agitateWhileShooting && shoot && !IntakeAction && _intakeDeployed &&
+                     Time.time - _shootStart >= agitateDelay && !NearTrench();
+        if (_agitating)
+        {
+            if (Time.time >= _agitateSwitch)
+            {
+                _agitateUp = !_agitateUp;
+                _agitateSwitch = Time.time + agitateHalfPeriod;
+            }
+            _intakeTarget = _agitateUp ? agitateAngle : intakeDeployedAngle;
+        }
+        else
+        {
+            _agitateUp = false;
+            _intakeTarget = _intakeDeployed ? intakeDeployedAngle : intakeStowedAngle;
+        }
         // the hopper extension goes out the first time the intake deploys (start of match) and stays out
         if (_intakeDeployed) _hopperOut = true;
         DebugState();
@@ -248,8 +298,17 @@ public class Breakaway : RebuiltTurretRobot
 
     protected override void Shooting()
     {
-        intakeRollers.Stop();
+        if (_agitating) intakeRollers.DivideSpeed(agitateRollerDivider);
+        else HoldIntake();
         SpinUpAndHold();
+    }
+
+    // deployed: turn slowly inward so fuel can't roll back out the front; stowed: stopped
+    private void HoldIntake()
+    {
+        if (!_intakeDeployed) intakeRollers.Stop();
+        else if (Time.time >= _intakeRunOnUntil) intakeRollers.DivideSpeed(holdRollerDivider);
+        // else: just released - full speed (no override) to pull in what is still in the mouth
     }
 
     protected override void Feed()
@@ -260,7 +319,7 @@ public class Breakaway : RebuiltTurretRobot
 
     protected override void Idling()
     {
-        intakeRollers.Stop();
+        HoldIntake();
         hopperRollers.Stop();
         feederRollers.Stop();
         kickerRollers.Stop();
@@ -287,6 +346,7 @@ public class Breakaway : RebuiltTurretRobot
 
     protected override bool Aligned()
     {
+        if (NearTrench()) return false; // hood is coming down for the trench: hold fuel
         if (ManualShoot) return true;   // manual shot: feed without waiting for the turret
         float error = Mathf.Abs(turret.GetError());
         if (directLaunch) return error < launchTurretTolerance;
@@ -299,7 +359,7 @@ public class Breakaway : RebuiltTurretRobot
         float rpm = ManualShoot ? manualShooterRpm : (float)flywheelInterpolation.Interpolate();
         float hood = ManualShoot ? manualHoodAngle : (float)hoodInterpolation.Interpolate();
         shooterWheels.SetRpm(rpm);
-        _hoodTarget = Mathf.Clamp(hood, -hoodMaxAngle, hoodMaxAngle);
+        _hoodTarget = NearTrench() ? hoodStowAngle : Mathf.Clamp(hood, -hoodMaxAngle, hoodMaxAngle);
         if (!Aligned())
         {
             // hold fuel until the turret is on target (and, for roller physics, the wheels are at speed)
@@ -415,7 +475,7 @@ public class Breakaway : RebuiltTurretRobot
         Debug.Log($"[Breakaway] intake={(bool)IntakeAction} deployed={_intakeDeployed} arm={(float)intakeJoint.GetAngle():F0}/{_intakeTarget:F0} " +
                   $"hopperOut={_hopperOut} locked={_hopperLocked} hopperPos={hopperIn:F1}in/{hopperExtendedDistance:F1} | " +
                   $"outtake={(bool)OuttakeAction} manual={(bool)ManualShoot} pass={(bool)AutoPass} passing={_passing} " +
-                  $"turretErr={err:F1} aligned={Aligned()} dist={dist:F2}m flight={_lastFlightTime:F2}s launched={_launched} | " +
+                  $"agitating={_agitating} nearTrench={NearTrench()} turretErr={err:F1} aligned={Aligned()} dist={dist:F2}m flight={_lastFlightTime:F2}s launched={_launched} | " +
                   $"hood={Mathf.DeltaAngle(0f, (float)hoodJoint.GetAngle()):F1}/{_hoodTarget:F1} | intake {Rpm(intakeRollers)} | hopper {Rpm(hopperRollers)} | feeder {Rpm(feederRollers)} | " +
                   $"belts {Rpm(kickerBelts)} | kicker {Rpm(kickerRollers)} | shooter {Rpm(shooterWheels)}");
     }

@@ -5616,8 +5616,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 0.009000001, y: 0.0403753, z: 0.1625}
-  m_Center: {x: 0, y: 0, z: 0.0216}
+  m_Size: {x: 0.009000001, y: 0.0403753, z: 0.133}
+  m_Center: {x: 0, y: 0, z: 0.0365}
 --- !u!1 &681541670389735295
 GameObject:
   m_ObjectHideFlags: 0
@@ -24000,7 +24000,7 @@ MonoBehaviour:
   coreBounce: 0
   rpm: 1000
   compressionStiffness: 500
-  compressionDamping: 50
+  compressionDamping: 100
   scrubForces: 0
   motorSlipResponse: 1
   frictionCoupledToNormal: 0
@@ -26796,16 +26796,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c0d77fda6c744f14aa8a835839b87a13, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  radius: 1
+  radius: 1.25
   length: 21.869099
   useBeltMode: 0
   beltLength: 10
-  maxSquish: 2
+  maxSquish: 2.25
   coreFriction: 1
   coreBounce: 0
-  rpm: 1000
+  rpm: 800
   compressionStiffness: 500
-  compressionDamping: 50
+  compressionDamping: 100
   scrubForces: 0
   motorSlipResponse: 1
   frictionCoupledToNormal: 0
@@ -32515,7 +32515,7 @@ MonoBehaviour:
   coreBounce: 0
   rpm: -1000
   compressionStiffness: 500
-  compressionDamping: 50
+  compressionDamping: 100
   scrubForces: 0
   motorSlipResponse: 1
   frictionCoupledToNormal: 0
@@ -60542,8 +60542,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 0.0319, y: 0.003175002, z: 0.0463}
-  m_Center: {x: 0, y: 0, z: -0.0293}
+  m_Size: {x: 0.02, y: 0.003175002, z: 0.03}
+  m_Center: {x: 0, y: 0, z: -0.042}
 --- !u!1 &7958038324488585065
 GameObject:
   m_ObjectHideFlags: 0
@@ -71239,7 +71239,7 @@ MonoBehaviour:
     Output: 0
     transformOverride: {fileID: 0}
   intakeDeployedAngle: 0
-  intakeStowedAngle: -100
+  intakeStowedAngle: -120
   hopperExtendedDistance: 12.024173
   hoodMaxAngle: 40
   manualHoodAngle: 0
