@@ -1953,7 +1953,7 @@ MonoBehaviour:
   maxSquish: 0.5
   coreFriction: 1
   coreBounce: 0
-  rpm: 1200
+  rpm: 2000
   compressionStiffness: 500
   compressionDamping: 50
   scrubForces: 0
@@ -3703,7 +3703,7 @@ BoxCollider:
   m_LayerOverridePriority: 0
   m_IsTrigger: 0
   m_ProvidesContacts: 0
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 3
   m_Size: {x: 0.25625378, y: 0.0063500023, z: 0.15018985}
   m_Center: {x: 0, y: 0, z: 0}
@@ -5256,7 +5256,7 @@ MonoBehaviour:
   maxSquish: 0.5
   coreFriction: 1
   coreBounce: 0
-  rpm: 1200
+  rpm: 2000
   compressionStiffness: 500
   compressionDamping: 50
   scrubForces: 0
@@ -5561,7 +5561,7 @@ BoxCollider:
   m_LayerOverridePriority: 0
   m_IsTrigger: 0
   m_ProvidesContacts: 0
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 3
   m_Size: {x: 0.2562985, y: 0.0063500013, z: 0.15040027}
   m_Center: {x: 0, y: 0, z: 0}
@@ -5616,8 +5616,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 0.009000001, y: 0.0403753, z: 0.20526874}
-  m_Center: {x: 0, y: 0, z: 0}
+  m_Size: {x: 0.009000001, y: 0.0403753, z: 0.1625}
+  m_Center: {x: 0, y: 0, z: 0.0216}
 --- !u!1 &681541670389735295
 GameObject:
   m_ObjectHideFlags: 0
@@ -6393,7 +6393,7 @@ MonoBehaviour:
   maxSquish: 0.5
   coreFriction: 1
   coreBounce: 0
-  rpm: 2069
+  rpm: 4000
   compressionStiffness: 500
   compressionDamping: 50
   scrubForces: 0
@@ -8758,7 +8758,7 @@ MonoBehaviour:
   maxSquish: 0.5
   coreFriction: 1
   coreBounce: 0
-  rpm: 2069
+  rpm: 4000
   compressionStiffness: 500
   compressionDamping: 50
   scrubForces: 0
@@ -9007,7 +9007,7 @@ MonoBehaviour:
   maxSquish: 0.5
   coreFriction: 1
   coreBounce: 0
-  rpm: -2069
+  rpm: -3000
   compressionStiffness: 500
   compressionDamping: 50
   scrubForces: 0
@@ -9609,7 +9609,7 @@ BoxCollider:
   m_LayerOverridePriority: 0
   m_IsTrigger: 0
   m_ProvidesContacts: 0
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 3
   m_Size: {x: 0.15461567, y: 0.0033250607, z: 0.045474797}
   m_Center: {x: 0, y: 0, z: 0}
@@ -10619,7 +10619,7 @@ BoxCollider:
   m_LayerOverridePriority: 0
   m_IsTrigger: 0
   m_ProvidesContacts: 0
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 3
   m_Size: {x: 0.34627625, y: 0.0062000155, z: 0.14368853}
   m_Center: {x: 0, y: 0, z: 0}
@@ -11482,7 +11482,7 @@ MonoBehaviour:
   maxSquish: 0.5
   coreFriction: 1
   coreBounce: 0
-  rpm: -2069
+  rpm: -3000
   compressionStiffness: 500
   compressionDamping: 50
   scrubForces: 0
@@ -12229,7 +12229,7 @@ MonoBehaviour:
   maxSquish: 0.5
   coreFriction: 1
   coreBounce: 0
-  rpm: 1200
+  rpm: 2000
   compressionStiffness: 500
   compressionDamping: 50
   scrubForces: 0
@@ -12780,7 +12780,7 @@ MonoBehaviour:
   maxSquish: 0.5
   coreFriction: 1
   coreBounce: 0
-  rpm: 2500
+  rpm: 3500
   compressionStiffness: 500
   compressionDamping: 50
   scrubForces: 0
@@ -13581,7 +13581,7 @@ MonoBehaviour:
   maxSquish: 0.5
   coreFriction: 1
   coreBounce: 0
-  rpm: 1200
+  rpm: 2000
   compressionStiffness: 500
   compressionDamping: 50
   scrubForces: 0
@@ -19672,7 +19672,7 @@ BoxCollider:
   m_LayerOverridePriority: 0
   m_IsTrigger: 0
   m_ProvidesContacts: 0
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 3
   m_Size: {x: 0.15453732, y: 0.0031750433, z: 0.045253076}
   m_Center: {x: 0, y: 0, z: 0}
@@ -20547,7 +20547,7 @@ MonoBehaviour:
   maxSquish: 0.5
   coreFriction: 1
   coreBounce: 0
-  rpm: -2069
+  rpm: -3000
   compressionStiffness: 500
   compressionDamping: 50
   scrubForces: 0
@@ -23305,7 +23305,7 @@ MonoBehaviour:
   maxSquish: 0.5
   coreFriction: 1
   coreBounce: 0
-  rpm: -2069
+  rpm: -3000
   compressionStiffness: 500
   compressionDamping: 50
   scrubForces: 0
@@ -24743,7 +24743,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   brakeModeMultiplyer: 1
   ignoreDisabledMode: 0
-  lockJointOnDisable: 0
+  lockJointOnDisable: 1
   movementAudioClip: {fileID: 0}
   audioErrorThreshold: 3
   audioErrorDeltaThreshold: 25
@@ -24765,8 +24765,8 @@ MonoBehaviour:
   useStartingOffset: 0
   angularAxis: 0
   velocityAxis: 0
-  noWrap: 0
-  noWrapAngle: 0
+  noWrap: 1
+  noWrapAngle: 300
   isWrapping: 0
 --- !u!1 &3481115444386575337
 GameObject:
@@ -26223,7 +26223,7 @@ MonoBehaviour:
   maxSquish: 0.5
   coreFriction: 1
   coreBounce: 0
-  rpm: 2069
+  rpm: 4000
   compressionStiffness: 500
   compressionDamping: 50
   scrubForces: 0
@@ -29351,7 +29351,7 @@ BoxCollider:
   m_LayerOverridePriority: 0
   m_IsTrigger: 0
   m_ProvidesContacts: 0
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 3
   m_Size: {x: 0.34695396, y: 0.006200029, z: 0.14352453}
   m_Center: {x: 0, y: 0, z: 0}
@@ -30607,7 +30607,7 @@ MonoBehaviour:
   maxSquish: 0.5
   coreFriction: 1
   coreBounce: 0
-  rpm: -2500
+  rpm: -3500
   compressionStiffness: 500
   compressionDamping: 50
   scrubForces: 0
@@ -31941,7 +31941,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   brakeModeMultiplyer: 1
   ignoreDisabledMode: 0
-  lockJointOnDisable: 0
+  lockJointOnDisable: 1
   movementAudioClip: {fileID: 0}
   audioErrorThreshold: 3
   audioErrorDeltaThreshold: 25
@@ -32135,7 +32135,7 @@ MonoBehaviour:
   maxSquish: 0.5
   coreFriction: 1
   coreBounce: 0
-  rpm: 2069
+  rpm: 4000
   compressionStiffness: 500
   compressionDamping: 50
   scrubForces: 0
@@ -35247,7 +35247,7 @@ MonoBehaviour:
   maxSquish: 0.5
   coreFriction: 1
   coreBounce: 0
-  rpm: 2069
+  rpm: 4000
   compressionStiffness: 500
   compressionDamping: 50
   scrubForces: 0
@@ -36646,7 +36646,7 @@ MonoBehaviour:
   maxSquish: 0.5
   coreFriction: 1
   coreBounce: 0
-  rpm: 2069
+  rpm: 4000
   compressionStiffness: 500
   compressionDamping: 50
   scrubForces: 0
@@ -42618,7 +42618,7 @@ MonoBehaviour:
   maxSquish: 0.5
   coreFriction: 1
   coreBounce: 0
-  rpm: 2069
+  rpm: 4000
   compressionStiffness: 500
   compressionDamping: 50
   scrubForces: 0
@@ -43906,13 +43906,13 @@ MonoBehaviour:
     PvffController: {fileID: 0}
     Flywheel: {fileID: 0}
     Multiplier: 1
-    flipped: 0
+    flipped: 1
   - IntRoller: {fileID: 7816949069798391076}
     GenRoller: {fileID: 0}
     PvffController: {fileID: 0}
     Flywheel: {fileID: 0}
     Multiplier: 1
-    flipped: 0
+    flipped: 1
   - IntRoller: {fileID: 1970914472788661405}
     GenRoller: {fileID: 0}
     PvffController: {fileID: 0}
@@ -46235,7 +46235,7 @@ MonoBehaviour:
   maxSquish: 0.5
   coreFriction: 1
   coreBounce: 0
-  rpm: 2069
+  rpm: 4000
   compressionStiffness: 500
   compressionDamping: 50
   scrubForces: 0
@@ -46569,7 +46569,7 @@ MonoBehaviour:
   maxSquish: 0.5
   coreFriction: 1
   coreBounce: 0
-  rpm: -2069
+  rpm: -3000
   compressionStiffness: 500
   compressionDamping: 50
   scrubForces: 0
@@ -46786,7 +46786,7 @@ MonoBehaviour:
   maxSquish: 0.5
   coreFriction: 1
   coreBounce: 0
-  rpm: 2069
+  rpm: 4000
   compressionStiffness: 500
   compressionDamping: 50
   scrubForces: 0
@@ -47653,7 +47653,7 @@ MonoBehaviour:
   rpm: 3500
   compressionStiffness: 500
   compressionDamping: 50
-  scrubForces: 0
+  scrubForces: 60
   motorSlipResponse: 1
   frictionCoupledToNormal: 0
   frictionCoefficient: 3
@@ -53137,7 +53137,7 @@ MonoBehaviour:
   maxSquish: 0.5
   coreFriction: 1
   coreBounce: 0
-  rpm: -2500
+  rpm: -3500
   compressionStiffness: 500
   compressionDamping: 50
   scrubForces: 0
@@ -54138,7 +54138,7 @@ MonoBehaviour:
   maxSquish: 2
   coreFriction: 1
   coreBounce: 0
-  rpm: -2500
+  rpm: -3500
   compressionStiffness: 500
   compressionDamping: 50
   scrubForces: 0
@@ -54899,7 +54899,7 @@ BoxCollider:
   m_LayerOverridePriority: 0
   m_IsTrigger: 0
   m_ProvidesContacts: 0
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 3
   m_Size: {x: 0.049206294, y: 0.06667544, z: 0.036845975}
   m_Center: {x: 0, y: 0, z: 0}
@@ -55485,7 +55485,7 @@ MonoBehaviour:
   maxSquish: 0.5
   coreFriction: 1
   coreBounce: 0
-  rpm: 2069
+  rpm: 4000
   compressionStiffness: 500
   compressionDamping: 50
   scrubForces: 0
@@ -56562,7 +56562,7 @@ MonoBehaviour:
   maxSquish: 0.5
   coreFriction: 1
   coreBounce: 0
-  rpm: 2069
+  rpm: 4000
   compressionStiffness: 500
   compressionDamping: 50
   scrubForces: 0
@@ -58596,7 +58596,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   brakeModeMultiplyer: 1
   ignoreDisabledMode: 0
-  lockJointOnDisable: 0
+  lockJointOnDisable: 1
   movementAudioClip: {fileID: 0}
   audioErrorThreshold: 3
   audioErrorDeltaThreshold: 25
@@ -59069,7 +59069,7 @@ MonoBehaviour:
   rpm: 3500
   compressionStiffness: 500
   compressionDamping: 50
-  scrubForces: 0
+  scrubForces: 60
   motorSlipResponse: 1
   frictionCoupledToNormal: 0
   frictionCoefficient: 3
@@ -60542,8 +60542,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 0.057826437, y: 0.003175002, z: 0.08401946}
-  m_Center: {x: 0, y: 0, z: 0}
+  m_Size: {x: 0.0319, y: 0.003175002, z: 0.0463}
+  m_Center: {x: 0, y: 0, z: -0.0293}
 --- !u!1 &7958038324488585065
 GameObject:
   m_ObjectHideFlags: 0
@@ -60872,7 +60872,7 @@ MonoBehaviour:
   maxSquish: 0.5
   coreFriction: 1
   coreBounce: 0
-  rpm: 2500
+  rpm: 3500
   compressionStiffness: 500
   compressionDamping: 50
   scrubForces: 0
@@ -61739,10 +61739,10 @@ MonoBehaviour:
   maxSquish: 0.5
   coreFriction: 1
   coreBounce: 0
-  rpm: 3000
+  rpm: 4000
   compressionStiffness: 500
   compressionDamping: 50
-  scrubForces: 0
+  scrubForces: 60
   motorSlipResponse: 1
   frictionCoupledToNormal: 0
   frictionCoefficient: 3
@@ -65376,7 +65376,7 @@ MonoBehaviour:
   maxSquish: 0.5
   coreFriction: 1
   coreBounce: 0
-  rpm: 2069
+  rpm: 4000
   compressionStiffness: 500
   compressionDamping: 50
   scrubForces: 0
@@ -65666,7 +65666,7 @@ MonoBehaviour:
   maxSquish: 0.5
   coreFriction: 1
   coreBounce: 0
-  rpm: 2069
+  rpm: -3000
   compressionStiffness: 500
   compressionDamping: 50
   scrubForces: 0
@@ -67151,7 +67151,7 @@ MonoBehaviour:
   maxSquish: 2
   coreFriction: 1
   coreBounce: 0
-  rpm: -2500
+  rpm: -3500
   compressionStiffness: 500
   compressionDamping: 50
   scrubForces: 0
@@ -68898,7 +68898,7 @@ MonoBehaviour:
   maxSquish: 0.5
   coreFriction: 1
   coreBounce: 0
-  rpm: 1200
+  rpm: 2000
   compressionStiffness: 500
   compressionDamping: 50
   scrubForces: 0
@@ -69795,7 +69795,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   brakeModeMultiplyer: 1
   ignoreDisabledMode: 0
-  lockJointOnDisable: 0
+  lockJointOnDisable: 1
   movementAudioClip: {fileID: 0}
   audioErrorThreshold: 3
   audioErrorDeltaThreshold: 25
@@ -69837,7 +69837,7 @@ MonoBehaviour:
   useTargetPosition: 0
   referencePoint: {fileID: 6800383709885587368}
   turretAxis: 1
-  angleOffset: 0
+  angleOffset: 90
   flipDirection: 0
   useStartingOffset: 0
   wrappingSettings:
@@ -71181,10 +71181,10 @@ MonoBehaviour:
   kickerBelts: {fileID: 3005644275677495062}
   shooterWheels: {fileID: 5801294285180901882}
   turretPid:
-    kP: 0.5
+    kP: 1.5
     kI: 0
-    kD: 0.1
-    Max: 10
+    kD: 0.15
+    Max: 15
     Isaturation: 0
   hoodPid:
     kP: 0.5
@@ -71207,42 +71207,44 @@ MonoBehaviour:
   flywheelInterpolation:
     interpolationMap:
     - distance: 2.2
-      value: 1600
+      value: 3250
     - distance: 3.2
-      value: 1950
+      value: 3850
     - distance: 3.9
-      value: 2350
+      value: 4350
     - distance: 4.1
-      value: 2550
+      value: 4550
     - distance: 5.5
-      value: 3500
+      value: 5700
     - distance: 8
-      value: 6000
+      value: 7600
     Distance: 0
     Output: 0
     transformOverride: {fileID: 0}
   hoodInterpolation:
     interpolationMap:
-    - distance: 0
-      value: 0
+    - distance: 2.2
+      value: -14
+    - distance: 3.2
+      value: -11
     - distance: 3.9
-      value: 12
-    - distance: 0
-      value: 17
-    - distance: 0
-      value: 24
-    - distance: 0
-      value: 30
+      value: -9
+    - distance: 4.5
+      value: -7
+    - distance: 6
+      value: -4
+    - distance: 8
+      value: 0
     Distance: 0
     Output: 0
     transformOverride: {fileID: 0}
   intakeDeployedAngle: 0
   intakeStowedAngle: -100
   hopperExtendedDistance: 12.024173
-  hoodMaxAngle: 30
+  hoodMaxAngle: 40
   manualHoodAngle: 0
   manualShooterRpm: 3000
-  turretTolerance: 15
+  turretTolerance: 1.5
   debugShooting: 1
 --- !u!4 &7343472963605344920 stripped
 Transform:
