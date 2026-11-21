@@ -8786,7 +8786,8 @@ MonoBehaviour:
   listener: {fileID: 1142033755}
   preloadPrefab: {fileID: 2886892246794840118, guid: 96adc4350dc09d942b6bf56af73710ca,
     type: 3}
-  <BlueSpawnedRobots>k__BackingField: []
+  <BlueSpawnedRobots>k__BackingField:
+  - {fileID: 4124225120133373565, guid: c821a2d2722c14344874f063f29d340d, type: 3}
   <BlueRobotsModded>k__BackingField: 
   <RedSpawnedRobots>k__BackingField: []
   <RedRobotsModded>k__BackingField: 

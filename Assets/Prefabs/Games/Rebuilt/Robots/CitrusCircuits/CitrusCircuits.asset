@@ -17,7 +17,7 @@ MonoBehaviour:
   robotImage: {fileID: 21300000, guid: f64e8392a678cf841bb9bda6db436799, type: 3}
   mainRobot:
     displayName: 
-    robotPrefab: {fileID: 7502663017153341079, guid: bfced5a5d5823e54d97613bcb22c4876,
+    robotPrefab: {fileID: 4124225120133373565, guid: c821a2d2722c14344874f063f29d340d,
       type: 3}
     mainMenuPrefab: {fileID: 7144918864449641783, guid: 8b68b831db190844cb53f3bb6759cdc6,
       type: 3}

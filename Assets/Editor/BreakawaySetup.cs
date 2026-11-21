@@ -585,6 +585,491 @@ namespace MoSim.EditorTools
             return log + (saved ? "SAVED " + PrefabPath : "ERROR save failed");
         }
 
+        // Owner 2026-11-20: the hood pivots about the shooter-wheel shaft (SH-20, the 4" urethane wheels' shaft), not SH-16.
+        // Moves the "Hood Offset" pivot onto SH-20's axis (axis direction from the shaft's long side); hood parts keep
+        // their world poses, the Hood joint object stays at local zero under the offset.
+        public static string MoveHoodPivot()
+        {
+            var stage = PrefabStageUtility.OpenPrefab(PrefabPath);
+            if (stage == null) return "ERROR could not open " + PrefabPath;
+            GameObject root = stage.prefabContentsRoot;
+            Transform turret = root.transform.Find("Turret");
+            Transform offset = turret ? turret.Find("Hood Offset") : null;
+            Transform hood = offset ? offset.Find("Hood") : null;
+            if (hood == null) return "ERROR Turret/Hood Offset/Hood not found (run FixJointOffsets first)";
+            var shaft = turret.GetComponentsInChildren<Renderer>(true).FirstOrDefault(r => r.name == "SH-20" && !r.transform.IsChildOf(hood));
+            if (shaft == null) return "ERROR shooter-wheel shaft SH-20 not found on the turret";
+            Vector3 sz = shaft.bounds.size;
+            Vector3 axis = sz.x >= sz.y && sz.x >= sz.z ? Vector3.right : sz.y >= sz.z ? Vector3.up : Vector3.forward;
+
+            var kids = new List<(Transform t, Vector3 p, Quaternion r)>();
+            foreach (Transform c in hood) kids.Add((c, c.position, c.rotation));
+            Vector3 was = offset.position;
+            offset.SetPositionAndRotation(shaft.bounds.center, Quaternion.FromToRotation(Vector3.right, axis));
+            hood.localPosition = Vector3.zero; hood.localRotation = Quaternion.identity;
+            foreach (var k in kids) k.t.SetPositionAndRotation(k.p, k.r);
+            var cj = hood.GetComponent<ConfigurableJoint>();
+            if (cj) { cj.anchor = Vector3.zero; cj.axis = Vector3.right; cj.secondaryAxis = Vector3.up; }
+
+            PrefabUtility.SaveAsPrefabAsset(root, PrefabPath, out bool saved);
+            if (saved) stage.ClearDirtiness();
+            return $"Hood pivot moved from {turret.InverseTransformPoint(was)} to SH-20 at {offset.localPosition} " +
+                   $"(axis {axis}, moved {(shaft.bounds.center - was).magnitude * 1000f:F0} mm); {kids.Count} hood parts kept in place\n" +
+                   (saved ? "SAVED " + PrefabPath : "ERROR save failed");
+        }
+
+        // Direction fixes from ReportRollerDirections (owner 2026-11-20: "still cant shoot and intake sucks"):
+        //  - intake rollers spun front-face-down / top-forward (pushing fuel out): over-the-bumper needs spin about -X
+        //  - the feeder tunnel's horizontal pairs pushed fuel forward (+Z) back into the hopper; the belts are behind
+        //  - turret too slow to aim (log: 10-50 deg error): PID Max 4 -> 10 and tolerance 5 -> 15 deg (1706's values)
+        public static string FixDirectionsAndTurret()
+        {
+            var stage = PrefabStageUtility.OpenPrefab(PrefabPath);
+            if (stage == null) return "ERROR could not open " + PrefabPath;
+            Transform root = stage.prefabContentsRoot.transform;
+            var sb = new StringBuilder();
+            foreach (var r in root.GetComponentsInChildren<InteractionRoller>(true))
+            {
+                var so = new SerializedObject(r);
+                if (so.FindProperty("useBeltMode").boolValue)
+                {
+                    sb.AppendLine($"belt {r.name}: local up {Fmt(root.InverseTransformDirection(r.transform.up))}, " +
+                                  $"forward {Fmt(root.InverseTransformDirection(r.transform.forward))}, rpm {so.FindProperty("rpm").floatValue:F0} (left as is)");
+                    continue;
+                }
+                var rpmP = so.FindProperty("rpm");
+                Vector3 axis = root.InverseTransformDirection(r.transform.right);
+                Vector3 w = axis * Mathf.Sign(rpmP.floatValue == 0 ? 1 : rpmP.floatValue);
+                bool onArm = r.transform.IsChildOf(root.Find("Intake Arm") ?? root);
+                bool feederTunnel = r.name == "Feeder Roller" && Mathf.Abs(axis.x) > 0.9f
+                                    && r.transform.parent && r.transform.parent.name.StartsWith("Drive");
+                bool flip = (onArm && w.x > 0.5f) || (feederTunnel && Vector3.Cross(w, r.transform.position.y < root.TransformPoint(0, 0.25f, 0).y ? Vector3.up : Vector3.down).z > 0.5f);
+                if (!flip) continue;
+                rpmP.floatValue = -rpmP.floatValue;
+                so.ApplyModifiedPropertiesWithoutUndo();
+                sb.AppendLine($"flipped {r.transform.parent?.name}/{r.name} at {Fmt(root.InverseTransformPoint(r.transform.position))} -> rpm {rpmP.floatValue:F0}");
+            }
+            var robot = root.GetComponents<MonoBehaviour>().FirstOrDefault(m => m && m.GetType().Name == "Breakaway");
+            if (robot)
+            {
+                var rs = new SerializedObject(robot);
+                rs.FindProperty("turretPid.Max").floatValue = 10f;
+                rs.FindProperty("turretTolerance").floatValue = 15f;
+                rs.ApplyModifiedPropertiesWithoutUndo();
+                sb.AppendLine("turret PID Max 10, aim tolerance 15 deg");
+            }
+            PrefabUtility.SaveAsPrefabAsset(stage.prefabContentsRoot, PrefabPath, out bool saved);
+            if (saved) stage.ClearDirtiness();
+            return sb + (saved ? "SAVED " + PrefabPath : "ERROR save failed");
+        }
+
+        static string Fmt(Vector3 v) => $"({v.x:F2},{v.y:F2},{v.z:F2})";
+
+        // The kicker belts copy the CAD's two 120T x 15 mm HTD5 belts: flat conveyors along the robot's width (X) above
+        // and below the fuel, carrying it -X toward the turret. A belt grips with its local +/-Y faces and moves them
+        // along local Z (+Y face -> +Z at positive rpm). The hand-placed belts had their faces pointing +/-Z (into the
+        // tunnel exit), so fuel hit their edge. Orients both: bottom belt grips with its +Y face, top belt with its -Y
+        // face, both moving fuel -X; surface speed matched to the feeder rollers; length = CAD 280 mm.
+        public static string FixKickerBelts()
+        {
+            var stage = PrefabStageUtility.OpenPrefab(PrefabPath);
+            if (stage == null) return "ERROR could not open " + PrefabPath;
+            Transform root = stage.prefabContentsRoot.transform;
+            var belts = root.GetComponentsInChildren<InteractionRoller>(true)
+                .Where(r => new SerializedObject(r).FindProperty("useBeltMode").boolValue).OrderBy(r => r.transform.position.y).ToList();
+            if (belts.Count != 2) return $"ERROR expected 2 belts, found {belts.Count}";
+            var feeder = root.GetComponentsInChildren<InteractionRoller>(true).FirstOrDefault(r => r.name == "Feeder Roller" && r.transform.parent.name == "Drive (2)");
+            float feedSpeed = 4f;   // m/s fallback
+            if (feeder)
+            {
+                var fs = new SerializedObject(feeder);
+                feedSpeed = Mathf.Abs(fs.FindProperty("rpm").floatValue) * 2f * Mathf.PI / 60f * fs.FindProperty("radius").floatValue * 0.0254f;
+            }
+            var sb = new StringBuilder();
+            for (int i = 0; i < 2; i++)
+            {
+                var b = belts[i];
+                bool bottom = i == 0;
+                // bottom: +Y face (top) runs +local Z = -X;  top: -Y face (bottom) runs -local Z = -X
+                Vector3 fwd = root.TransformDirection(bottom ? Vector3.left : Vector3.right);
+                b.transform.rotation = Quaternion.LookRotation(fwd, root.up);
+                var so = new SerializedObject(b);
+                float r = so.FindProperty("radius").floatValue * 0.0254f;
+                float rpm = feedSpeed / Mathf.Max(r, 0.001f) * 60f / (2f * Mathf.PI);
+                so.FindProperty("rpm").floatValue = Mathf.Round(rpm);
+                so.FindProperty("beltLength").floatValue = 11f;
+                so.ApplyModifiedPropertiesWithoutUndo();
+                sb.AppendLine($"{b.name} ({(bottom ? "bottom" : "top")}, y {root.InverseTransformPoint(b.transform.position).y:F2}): " +
+                              $"faces up/down, runs fuel toward -X (turret), rpm {Mathf.Round(rpm)} (surface {feedSpeed:F1} m/s), length 11 in");
+            }
+            PrefabUtility.SaveAsPrefabAsset(stage.prefabContentsRoot, PrefabPath, out bool saved);
+            if (saved) stage.ClearDirtiness();
+            return sb + (saved ? "SAVED " + PrefabPath : "ERROR save failed");
+        }
+
+        // The two hand-made kicker belts face the feeder tunnel (+Z) but drove fuel opposite ways along X; the turret
+        // entry is at -X (Belt already moves fuel -X), so Belt (2) is reversed to match.
+        public static string FlipBelt2()
+        {
+            var stage = PrefabStageUtility.OpenPrefab(PrefabPath);
+            if (stage == null) return "ERROR could not open " + PrefabPath;
+            var belt = stage.prefabContentsRoot.GetComponentsInChildren<InteractionRoller>(true).FirstOrDefault(r => r.name == "Belt (2)");
+            if (belt == null) return "ERROR Belt (2) not found";
+            var so = new SerializedObject(belt);
+            var rpm = so.FindProperty("rpm");
+            rpm.floatValue = -rpm.floatValue;
+            so.ApplyModifiedPropertiesWithoutUndo();
+            PrefabUtility.SaveAsPrefabAsset(stage.prefabContentsRoot, PrefabPath, out bool saved);
+            if (saved) stage.ClearDirtiness();
+            return $"Belt (2) rpm -> {rpm.floatValue:F0}\n" + (saved ? "SAVED " + PrefabPath : "ERROR save failed");
+        }
+
+        // Owner 2026-11-20: "replace the belts with a bunch of little rollers". The two kicker belts become two rows of
+        // six 1.5" rollers (2" long, axis along Z) at the CAD belts' running surfaces (bottom run top y 0.173, top run
+        // bottom y 0.315 -> 14 mm squeeze on the 150 mm fuel), x 0.013..0.253 (CAD pulley centres), z -0.13. Both rows
+        // move fuel -X toward the turret at the feeder's surface speed. They reuse the belt group (Breakaway.kickerBelts),
+        // copy a tunnel feeder roller's settings, and have no spinning models (the CAD belt meshes stay as the visual).
+        public static string ReplaceBeltsWithRollers()
+        {
+            var stage = PrefabStageUtility.OpenPrefab(PrefabPath);
+            if (stage == null) return "ERROR could not open " + PrefabPath;
+            Transform root = stage.prefabContentsRoot.transform;
+            var all = root.GetComponentsInChildren<InteractionRoller>(true);
+            var belts = all.Where(r => new SerializedObject(r).FindProperty("useBeltMode").boolValue).ToList();
+            if (belts.Count == 0) return "ERROR no belts found (already replaced?)";
+            var group = belts[0].GetComponentInParent<RollerGroup>();
+            if (group == null) return "ERROR the belts' roller group was not found";
+            var template = all.FirstOrDefault(r => r.name == "Feeder Roller" && r.transform.parent.name == "Drive (2)"
+                                                   && Mathf.Abs(root.InverseTransformDirection(r.transform.right).x) > 0.9f);
+            if (template == null) return "ERROR no tunnel feeder roller to copy settings from";
+            var ts = new SerializedObject(template);
+            float feedSpeed = Mathf.Abs(ts.FindProperty("rpm").floatValue) * 2f * Mathf.PI / 60f * ts.FindProperty("radius").floatValue * 0.0254f;
+
+            const float radiusIn = 0.75f, lengthIn = 2f, r = radiusIn * 0.0254f;
+            float rpm = Mathf.Round(feedSpeed / r * 60f / (2f * Mathf.PI));
+            const int perRow = 6;
+            const float x0 = 0.013f, x1 = 0.253f, z = -0.13f;
+            float[] rowY = { 0.173f - r, 0.315f + r };   // bottom row under the fuel, top row above it
+            var created = new List<InteractionRoller>();
+            for (int row = 0; row < 2; row++)
+            {
+                for (int i = 0; i < perRow; i++)
+                {
+                    var go = Object.Instantiate(template.gameObject, group.transform);
+                    go.name = $"Kicker Roller {(row == 0 ? "Low" : "High")} {i + 1}";
+                    foreach (Transform c in go.transform.Cast<Transform>().ToList()) Object.DestroyImmediate(c.gameObject);
+                    float x = x0 + (x1 - x0) * i / (perRow - 1);
+                    go.transform.position = root.TransformPoint(new Vector3(x, rowY[row], z));
+                    // axis +Z: bottom row positive rpm moves its top surface -X; top row negative rpm moves its bottom -X
+                    go.transform.rotation = Quaternion.LookRotation(root.TransformDirection(Vector3.left), root.TransformDirection(Vector3.up))
+                                            * Quaternion.identity;
+                    go.transform.rotation = Quaternion.FromToRotation(go.transform.right, root.forward) * go.transform.rotation;
+                    var roller = go.GetComponent<InteractionRoller>();
+                    var so = new SerializedObject(roller);
+                    so.FindProperty("radius").floatValue = radiusIn;
+                    so.FindProperty("length").floatValue = lengthIn;
+                    so.FindProperty("rpm").floatValue = row == 0 ? rpm : -rpm;
+                    so.FindProperty("models").arraySize = 0;
+                    so.ApplyModifiedPropertiesWithoutUndo();
+                    created.Add(roller);
+                }
+            }
+            // the group now drives the rollers instead of the belts
+            var gs = new SerializedObject(group);
+            var members = gs.FindProperty("rollers");
+            members.arraySize = created.Count;
+            for (int i = 0; i < created.Count; i++)
+            {
+                var e = members.GetArrayElementAtIndex(i);
+                e.FindPropertyRelative("IntRoller").objectReferenceValue = created[i];
+                e.FindPropertyRelative("GenRoller").objectReferenceValue = null;
+                e.FindPropertyRelative("PvffController").objectReferenceValue = null;
+                e.FindPropertyRelative("Flywheel").objectReferenceValue = null;
+                e.FindPropertyRelative("Multiplier").floatValue = 1f;
+                e.FindPropertyRelative("flipped").boolValue = false;
+            }
+            gs.ApplyModifiedPropertiesWithoutUndo();
+            group.gameObject.name = "Kicker Roller Group";
+            foreach (var b in belts) Object.DestroyImmediate(b.gameObject);
+
+            PrefabUtility.SaveAsPrefabAsset(stage.prefabContentsRoot, PrefabPath, out bool saved);
+            if (saved) stage.ClearDirtiness();
+            return $"replaced {belts.Count} belts with {created.Count} rollers ({perRow} per row, {radiusIn * 2f}\" x {lengthIn}\", " +
+                   $"{rpm} rpm = {feedSpeed:F1} m/s surface, low row y {rowY[0]:F3} / high row y {rowY[1]:F3}, x {x0}..{x1}, z {z}) " +
+                   $"in '{group.name}' (still Breakaway.kickerBelts)\n" + (saved ? "SAVED " + PrefabPath : "ERROR save failed");
+        }
+
+        // Owner 2026-11-20: "add rollers that follow the curve of Part 81.003". The chute floor (slice at z -0.13, the
+        // fuel's centre plane) sweeps from the kicker exit (x -0.04, y 0.18) up and left to the turret ring (y 0.36), concave
+        // toward the fuel (curvature centre ~(-0.04, 0.36)). The fuel-side surface = the slice points nearest that centre
+        // per angle. Rollers (1.5" x 5", axis Z) are placed every ~45 mm along it, sticking 5 mm out of the surface,
+        // spinning so their fuel-side surface runs along the curve toward the turret at the kicker rollers' speed; they
+        // join the kicker roller group (Breakaway.kickerBelts), so the feed gate runs them.
+        public static string AddChuteRollers()
+        {
+            var stage = PrefabStageUtility.OpenPrefab(PrefabPath);
+            if (stage == null) return "ERROR could not open " + PrefabPath;
+            Transform root = stage.prefabContentsRoot.transform;
+            if (root.GetComponentsInChildren<InteractionRoller>(true).Any(r => r.name.StartsWith("Chute Roller")))
+                return "chute rollers already exist: nothing changed";
+            var mf = root.GetComponentsInChildren<MeshFilter>(true).FirstOrDefault(m => m.name == "Part 81.003" && m.sharedMesh);
+            if (mf == null) return "ERROR Part 81.003 not found";
+            const float zCut = -0.13f;
+            var v = mf.sharedMesh.vertices.Select(p => root.InverseTransformPoint(mf.transform.TransformPoint(p))).ToArray();
+            var tri = mf.sharedMesh.triangles;
+            var pts = new List<Vector2>();
+            for (int i = 0; i < tri.Length; i += 3)
+                for (int e = 0; e < 3; e++)
+                {
+                    Vector3 a = v[tri[i + e]], b = v[tri[i + (e + 1) % 3]];
+                    if ((a.z - zCut) * (b.z - zCut) > 0f || Mathf.Approximately(a.z, b.z)) continue;
+                    Vector3 p = Vector3.Lerp(a, b, (zCut - a.z) / (b.z - a.z));
+                    pts.Add(new Vector2(p.x, p.y));
+                }
+            // fuel-side envelope: per 4-degree bin around the curvature centre, the nearest point
+            var C = new Vector2(-0.04f, 0.36f);
+            var env = new List<Vector2>();
+            for (float a = 268f; a >= 182f; a -= 4f)
+            {
+                var bin = pts.Where(p => { float ang = Mathf.Atan2(p.y - C.y, p.x - C.x) * Mathf.Rad2Deg; if (ang < 0) ang += 360f; return Mathf.Abs(ang - a) <= 2f; }).ToList();
+                if (bin.Count == 0) continue;
+                env.Add(bin.OrderBy(p => (p - C).sqrMagnitude).First());
+            }
+            if (env.Count < 4) return $"ERROR could not trace the chute curve ({env.Count} points from {pts.Count})";
+            // smooth (3-point) and resample every ~45 mm along the curve
+            var sm = env.Select((p, i) => (env[Mathf.Max(0, i - 1)] + p + env[Mathf.Min(env.Count - 1, i + 1)]) / 3f).ToList();
+            var group = root.GetComponentsInChildren<RollerGroup>(true).FirstOrDefault(g => g.name == "Kicker Roller Group");
+            var template = root.GetComponentsInChildren<InteractionRoller>(true).FirstOrDefault(r => r.name == "Kicker Roller Low 3");
+            if (group == null || template == null) return "ERROR Kicker Roller Group / Kicker Roller Low 3 not found (replace the belts first)";
+            var tsx = new SerializedObject(template);
+            float rpm = Mathf.Abs(tsx.FindProperty("rpm").floatValue);
+            const float radiusIn = 0.75f, lengthIn = 5f, r = radiusIn * 0.0254f, step = 0.045f, protrude = 0.005f;
+            var created = new List<InteractionRoller>();
+            var sb = new StringBuilder();
+            float carry = 0.02f;   // first roller 20 mm in from the entry
+            for (int i = 0; i < sm.Count - 1; i++)
+            {
+                Vector2 a = sm[i], b = sm[i + 1];
+                float seg = (b - a).magnitude;
+                while (carry <= seg)
+                {
+                    Vector2 s = Vector2.Lerp(a, b, carry / seg);
+                    Vector2 t = (b - a).normalized;                       // travel direction: entry -> turret
+                    Vector2 n = (C - s).normalized;                       // toward the fuel (curvature centre side)
+                    Vector2 c2 = s - n * (r - protrude);                  // roller centre: top sticks 5 mm out
+                    var go = Object.Instantiate(template.gameObject, group.transform);
+                    go.name = $"Chute Roller {created.Count + 1}";
+                    foreach (Transform ch in go.transform.Cast<Transform>().ToList()) Object.DestroyImmediate(ch.gameObject);
+                    go.transform.position = root.TransformPoint(new Vector3(c2.x, c2.y, zCut));
+                    go.transform.rotation = Quaternion.LookRotation(root.TransformDirection(Vector3.left), root.up);   // right = +Z
+                    // surface at offset n moves along (+Z * sign) x n; pick the sign that moves it along t
+                    Vector3 vel = Vector3.Cross(Vector3.forward, new Vector3(n.x, n.y, 0f));
+                    float sign = Vector2.Dot(new Vector2(vel.x, vel.y), t) >= 0f ? 1f : -1f;
+                    var so = new SerializedObject(go.GetComponent<InteractionRoller>());
+                    so.FindProperty("radius").floatValue = radiusIn;
+                    so.FindProperty("length").floatValue = lengthIn;
+                    so.FindProperty("rpm").floatValue = sign * rpm;
+                    so.FindProperty("models").arraySize = 0;
+                    so.ApplyModifiedPropertiesWithoutUndo();
+                    created.Add(go.GetComponent<InteractionRoller>());
+                    sb.AppendLine($"  {go.name} at ({c2.x:F3},{c2.y:F3}) rpm {sign * rpm:F0}");
+                    carry += step;
+                }
+                carry -= seg;
+            }
+            var gs = new SerializedObject(group);
+            var members = gs.FindProperty("rollers");
+            int start = members.arraySize;
+            members.arraySize = start + created.Count;
+            for (int i = 0; i < created.Count; i++)
+            {
+                var e = members.GetArrayElementAtIndex(start + i);
+                e.FindPropertyRelative("IntRoller").objectReferenceValue = created[i];
+                e.FindPropertyRelative("GenRoller").objectReferenceValue = null;
+                e.FindPropertyRelative("PvffController").objectReferenceValue = null;
+                e.FindPropertyRelative("Flywheel").objectReferenceValue = null;
+                e.FindPropertyRelative("Multiplier").floatValue = 1f;
+                e.FindPropertyRelative("flipped").boolValue = false;
+            }
+            gs.ApplyModifiedPropertiesWithoutUndo();
+            PrefabUtility.SaveAsPrefabAsset(stage.prefabContentsRoot, PrefabPath, out bool saved);
+            if (saved) stage.ClearDirtiness();
+            return $"traced the chute curve from {pts.Count} slice points ({env.Count} envelope points, " +
+                   $"({sm[0].x:F3},{sm[0].y:F3}) -> ({sm[sm.Count - 1].x:F3},{sm[sm.Count - 1].y:F3})); added {created.Count} chute rollers " +
+                   $"to '{group.name}':\n{sb}" + (saved ? "SAVED " + PrefabPath : "ERROR save failed");
+        }
+
+        // Cross-sections of a mesh (robot frame) in the plane z = zCut: every triangle edge crossing the plane gives a
+        // point (x, y). Returned as "x,y" lines for analysing the chute's curve.
+        public static string SliceChute() => Slice("Part 81.003", -0.13f);
+
+        static string Slice(string meshName, float zCut)
+        {
+            var stage = PrefabStageUtility.OpenPrefab(PrefabPath);
+            if (stage == null) return "ERROR could not open " + PrefabPath;
+            Transform root = stage.prefabContentsRoot.transform;
+            var mf = root.GetComponentsInChildren<MeshFilter>(true).FirstOrDefault(m => m.name == meshName && m.sharedMesh);
+            if (mf == null) return "ERROR mesh not found: " + meshName;
+            var mesh = mf.sharedMesh;
+            var v = mesh.vertices.Select(p => root.InverseTransformPoint(mf.transform.TransformPoint(p))).ToArray();
+            var t = mesh.triangles;
+            var pts = new List<Vector2>();
+            for (int i = 0; i < t.Length; i += 3)
+                for (int e = 0; e < 3; e++)
+                {
+                    Vector3 a = v[t[i + e]], b = v[t[i + (e + 1) % 3]];
+                    if ((a.z - zCut) * (b.z - zCut) > 0f || Mathf.Approximately(a.z, b.z)) continue;
+                    float k = (zCut - a.z) / (b.z - a.z);
+                    Vector3 p = Vector3.Lerp(a, b, k);
+                    pts.Add(new Vector2(p.x, p.y));
+                }
+            var uniq = pts.Select(p => new Vector2(Mathf.Round(p.x * 1000f) / 1000f, Mathf.Round(p.y * 1000f) / 1000f)).Distinct().ToList();
+            var bmin = v.Aggregate(Vector3.Min); var bmax = v.Aggregate(Vector3.Max);
+            return $"{meshName}: {v.Length} verts, bounds {Fmt(bmin)}..{Fmt(bmax)}; slice z={zCut}: {uniq.Count} points\n" +
+                   string.Join("\n", uniq.OrderBy(p => p.x).ThenBy(p => p.y).Select(p => $"{p.x:F3},{p.y:F3}"));
+        }
+
+        // The hand-made chute colliders (Part 81.003/GeneratedClusterColliders) put the chute floor 17-35 mm above a
+        // ball's bottom where it leaves the last kicker roller (lip walls to y 0.19, floor to 0.21; ball bottom 0.173).
+        // Ramps the turret end of both kicker rows up (pair 1 +35 mm, pair 2 +17 mm; squeeze unchanged) so fuel leaves
+        // at chute-floor height, and removes the setup's solid box on the old belt's backing tube (Part 64.001,
+        // 'Box (57)' at y 0.325..0.355) that would block the raised path.
+        public static string RampKickerExit()
+        {
+            var stage = PrefabStageUtility.OpenPrefab(PrefabPath);
+            if (stage == null) return "ERROR could not open " + PrefabPath;
+            Transform root = stage.prefabContentsRoot.transform;
+            var sb = new StringBuilder();
+            var lift = new Dictionary<int, float> { { 2, 0.017f }, { 1, 0.035f } };   // roller 1 is at the turret end (x 0.013)
+            int moved = 0;
+            foreach (var r in root.GetComponentsInChildren<InteractionRoller>(true))
+            {
+                var m = System.Text.RegularExpressions.Regex.Match(r.name, @"^Kicker Roller (Low|High) (\d)$");
+                if (!m.Success || !lift.TryGetValue(int.Parse(m.Groups[2].Value), out float dy)) continue;
+                Vector3 p = root.InverseTransformPoint(r.transform.position);
+                if (p.x > 0.08f) { sb.AppendLine($"skipped {r.name}: x {p.x:F3} is not at the turret end"); continue; }
+                r.transform.position = root.TransformPoint(p + new Vector3(0f, dy, 0f));
+                sb.AppendLine($"{r.name}: x {p.x:F3} y {p.y:F3} -> {p.y + dy:F3}");
+                moved++;
+            }
+            var box = root.GetComponentsInChildren<BoxCollider>(true).Where(b => b.name == "Box (57)")
+                .FirstOrDefault(b => (root.InverseTransformPoint(b.bounds.center) - new Vector3(0.13f, 0.34f, -0.13f)).magnitude < 0.02f);
+            if (box) { Object.DestroyImmediate(box.gameObject); sb.AppendLine("removed Box (57) (old belt backing tube)"); }
+            if (moved == 0) return "ERROR no kicker rollers moved\n" + sb;
+            PrefabUtility.SaveAsPrefabAsset(stage.prefabContentsRoot, PrefabPath, out bool saved);
+            if (saved) stage.ClearDirtiness();
+            return sb + (saved ? "SAVED " + PrefabPath : "ERROR save failed");
+        }
+
+        // Removes 'Box (61)', the setup's solid box on the Part 72 plate across the kicker-roller exit (robot frame centre
+        // (-0.02, 0.16, -0.13), 0.01 x 0.10 x 0.21 m): fuel stopped against it at the last kicker roller.
+        public static string RemoveKickerExitBox()
+        {
+            var stage = PrefabStageUtility.OpenPrefab(PrefabPath);
+            if (stage == null) return "ERROR could not open " + PrefabPath;
+            Transform root = stage.prefabContentsRoot.transform;
+            var expect = new Vector3(-0.02f, 0.16f, -0.13f);
+            var box = root.GetComponentsInChildren<BoxCollider>(true)
+                .Where(b => b.name == "Box (61)")
+                .OrderBy(b => (root.InverseTransformPoint(b.bounds.center) - expect).magnitude).FirstOrDefault();
+            if (box == null) return "ERROR Box (61) not found";
+            Vector3 p = root.InverseTransformPoint(box.bounds.center);
+            if ((p - expect).magnitude > 0.02f) return $"ERROR Box (61) is at {Fmt(p)}, not at the kicker exit: nothing changed";
+            string where = $"{box.transform.parent?.parent?.name}/{box.transform.parent?.name}";
+            Object.DestroyImmediate(box.gameObject);
+            PrefabUtility.SaveAsPrefabAsset(stage.prefabContentsRoot, PrefabPath, out bool saved);
+            if (saved) stage.ClearDirtiness();
+            return $"removed Box (61) under {where} at {Fmt(p)}\n" + (saved ? "SAVED " + PrefabPath : "ERROR save failed");
+        }
+
+        // Removes the setup's solid boxes that block the turret entry: the box fitted to the hollow chute Part 81.003
+        // (it has hand-made GeneratedClusterColliders) and the one on Part 76.001 overlapping fuel leaving the belts.
+        // Only boxes directly under Drive/collider whose fitted mesh matches are removed.
+        public static string RemoveFuelPathBlockers()
+        {
+            var stage = PrefabStageUtility.OpenPrefab(PrefabPath);
+            if (stage == null) return "ERROR could not open " + PrefabPath;
+            Transform root = stage.prefabContentsRoot.transform;
+            Transform cols = root.Find("Drive/collider") ?? root.Find("Drive/Model/collider");
+            if (cols == null) return "ERROR Drive collider folder not found";
+            var meshes = root.GetComponentsInChildren<MeshRenderer>(true);
+            // + Part 72: the 6 mm plate across the kicker-roller exit; its solid box stands 32 mm above a ball's bottom
+            //   (the real foam ball squashes past it, the sim's rigid one stops at the last kicker roller)
+            var targets = new[] { "Part 81.003", "Part 76.001", "Part 72" };
+            var targetMeshes = meshes.Where(m => targets.Contains(m.name)).ToList();
+            var sb = new StringBuilder();
+            foreach (var box in cols.GetComponentsInChildren<BoxCollider>(true).ToList())
+            {
+                if (box.transform.parent != cols) continue;
+                // the box fitted to a target mesh: same bounds centre (within 2 cm); the fitted box can be larger than
+                // the mesh's axis-aligned bounds (fitted at an angle), so size is not compared
+                var src = targetMeshes.FirstOrDefault(m => (m.bounds.center - box.bounds.center).magnitude < 0.02f);
+                if (src == null) continue;
+                sb.AppendLine($"removed '{box.name}' (solid box on {src.name}, size {Fmt(box.bounds.size)})");
+                Object.DestroyImmediate(box.gameObject);
+            }
+            if (sb.Length == 0)
+            {
+                var near = cols.GetComponentsInChildren<BoxCollider>(true).Where(b => b.transform.parent == cols)
+                    .Select(b => (b, d: targetMeshes.Count == 0 ? -1f : targetMeshes.Min(m => (m.bounds.center - b.bounds.center).magnitude)))
+                    .OrderBy(x => x.d).Take(3).Select(x => $"{x.b.name} {x.d * 1000f:F0} mm");
+                return $"nothing removed; target meshes found {targetMeshes.Count}; nearest boxes: {string.Join(", ", near)}";
+            }
+            PrefabUtility.SaveAsPrefabAsset(stage.prefabContentsRoot, PrefabPath, out bool saved);
+            if (saved) stage.ClearDirtiness();
+            return sb + (saved ? "SAVED " + PrefabPath : "ERROR save failed");
+        }
+
+        // Lists colliders whose bounds overlap the fuel path (robot frame: hopper floor -> feeder tunnel -> belts ->
+        // turret entry), with the mesh each was fitted to (same bounds centre), to find solid boxes blocking fuel.
+        public static string ReportFuelPathColliders()
+        {
+            var stage = PrefabStageUtility.OpenPrefab(PrefabPath);
+            if (stage == null) return "ERROR could not open " + PrefabPath;
+            Transform root = stage.prefabContentsRoot.transform;
+            var path = new Bounds(new Vector3(0.02f, 0.26f, -0.07f), new Vector3(0.56f, 0.15f, 0.36f));   // x -0.26..0.30, y 0.185..0.335, z -0.25..0.11
+            var meshes = root.GetComponentsInChildren<MeshRenderer>(true);
+            var sb = new StringBuilder();
+            foreach (var c in root.GetComponentsInChildren<Collider>(true))
+            {
+                if (c.isTrigger || c is WheelCollider) continue;
+                Bounds b = c.bounds;
+                if (!b.Intersects(path)) continue;
+                var src = meshes.OrderBy(m => (m.bounds.center - b.center).sqrMagnitude).FirstOrDefault();
+                Vector3 p = root.InverseTransformPoint(b.center);
+                sb.AppendLine($"{c.GetType().Name} '{c.name}' under {c.transform.parent?.parent?.name}/{c.transform.parent?.name} " +
+                              $"centre {Fmt(p)} size {Fmt(b.size)} <- {src?.name}");
+            }
+            StageUtility.GoToMainStage();
+            return sb.Length == 0 ? "no colliders in the fuel path" : sb.ToString();
+        }
+
+        // Reports, per roller (robot frame: +Z forward/intake side, +Y up, +X right), the spin axis * rpm sign and the
+        // surface velocity on the roller's top and front faces. InteractionRoller spins about transform.right * rpm
+        // (right-hand rule), so the surface at offset r moves along (right * sign) x r.
+        public static string ReportRollerDirections()
+        {
+            var stage = PrefabStageUtility.OpenPrefab(PrefabPath);
+            if (stage == null) return "ERROR could not open " + PrefabPath;
+            Transform root = stage.prefabContentsRoot.transform;
+            var sb = new StringBuilder();
+            foreach (var r in root.GetComponentsInChildren<InteractionRoller>(true))
+            {
+                var so = new SerializedObject(r);
+                float rpm = so.FindProperty("rpm").floatValue;
+                bool belt = so.FindProperty("useBeltMode").boolValue;
+                Vector3 w = root.InverseTransformDirection(r.transform.right) * Mathf.Sign(rpm == 0 ? 1 : rpm);
+                Vector3 top = Vector3.Cross(w, Vector3.up), front = Vector3.Cross(w, Vector3.forward);
+                Vector3 p = root.InverseTransformPoint(r.transform.position);
+                string grp = r.GetComponentInParent<RollerGroup>() ? "" : "";
+                sb.AppendLine($"{r.transform.parent?.name}/{r.name} pos({p.x:F2},{p.y:F2},{p.z:F2}) rpm {rpm:F0}{(belt ? " BELT" : "")} " +
+                              $"axis*sign({w.x:F2},{w.y:F2},{w.z:F2}) topSurface({top.x:F1},{top.y:F1},{top.z:F1}) frontSurface({front.x:F1},{front.y:F1},{front.z:F1}) " +
+                              $"r={so.FindProperty("radius").floatValue:F2}in L={so.FindProperty("length").floatValue:F1}in");
+            }
+            StageUtility.GoToMainStage();
+            return sb.ToString();
+        }
+
         // Links the RollerGroup made only of belts (the kicker belts added by hand) to Breakaway.kickerBelts.
         public static string LinkKickerBelts()
         {
