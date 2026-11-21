@@ -37201,7 +37201,7 @@ MonoBehaviour:
   netHeight: 0.43
   restLengthScale: 1
   subSteps: 3
-  stretchCompliance: 0.0009
+  stretchCompliance: 0.0015
   shearCompliance: 0.0001
   bendCompliance: 0.002
   damping: 0.008
@@ -37213,4 +37213,4 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 4096
   collisionSubstepInterval: 2
-  anchorBorderFraction: 0.576
+  anchorBorderFraction: 1
