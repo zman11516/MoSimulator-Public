@@ -69841,9 +69841,9 @@ MonoBehaviour:
   flipDirection: 0
   useStartingOffset: 0
   wrappingSettings:
-    useNoWrap: 0
-    noWrapMin: 0
-    noWrapMax: 0
+    useNoWrap: 1
+    noWrapMin: -200
+    noWrapMax: 200
   trackContinuously: 1
   steerFeedFowardConstant: 0
   currentAngle: 0

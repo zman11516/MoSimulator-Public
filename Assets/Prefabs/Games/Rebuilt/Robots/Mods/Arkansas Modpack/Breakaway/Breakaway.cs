@@ -348,6 +348,7 @@ public class Breakaway : RebuiltTurretRobot
     {
         if (NearTrench()) return false; // hood is coming down for the trench: hold fuel
         if (ManualShoot) return true;   // manual shot: feed without waiting for the turret
+        if (turret.IsWrapping()) return false; // hold fuel while the turret unwinds
         float error = Mathf.Abs(turret.GetError());
         if (directLaunch) return error < launchTurretTolerance;
         return error < turretTolerance && shooterWheels.AtSpeed();
