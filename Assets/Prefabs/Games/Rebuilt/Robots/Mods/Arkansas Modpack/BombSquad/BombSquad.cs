@@ -79,9 +79,12 @@ public class BombSquad : RebuiltRobotBase
     [SerializeField] private Vector3 throatHalfExtents = new Vector3(0.27f, 0.12f, 0.11f);
     [SerializeField] private Vector3 launchPoint = new Vector3(0f, 0.61f, -0.169f);  // robot-local, above the shooter (centre lane)
     [SerializeField] private float launchInterval = 0.25f;      // s between balls in the same lane
-    // multi-wide shooter: fuel is fired side by side across the shooter, one ball per lane per interval
+    // multi-wide shooter: fuel is fired side by side across the shooter, staggered so balls don't form a rigid line
     [SerializeField, Min(1)] private int laneCount = 4;
     [SerializeField] private float laneSpacing = 0.14f;         // m between lane centres
+    [SerializeField] private float minShotStagger = 0.045f;     // min s between any two shots across lanes
+    [SerializeField] private float laneJitter = 0.15f;          // fractional +/- timing variation per lane
+    [SerializeField] private float launchPosJitter = 0.015f;    // m of slight +/- position variation at exit
     [SerializeField] private float hubApexAboveTarget = 0.9f;   // m the arc peaks above the hub aim point
     [SerializeField] private float hubApexPerMeter = 0.25f;     // ...or this x distance if higher
     [SerializeField] private float passApexAboveTarget = 1.8f;
@@ -109,7 +112,8 @@ public class BombSquad : RebuiltRobotBase
     private readonly Collider[] _throatHits = new Collider[16];
     private readonly List<(Collider[] ball, float until)> _ignored = new();
     private float[] _laneNextLaunch;
-    private readonly HashSet<Rigidbody> _volley = new();
+    private float _nextAnyLaunch;
+    private readonly List<int> _readyLanes = new();
     private int _launched;
     private float _nextDebug;
 
@@ -272,41 +276,49 @@ public class BombSquad : RebuiltRobotBase
         _intakeTarget = _agitateUp ? agitateAngle : intakeDeployedAngle;
     }
 
-    // ---- direct launch (multi-wide: each lane fires the ball nearest to it, side by side)
+    // ---- direct launch (multi-wide: staggered across lanes so balls fire naturally rather than in a rigid line)
     private void TryLaunch()
     {
         if (BaseGameManager.Instance == null || BaseGameManager.Instance.RobotState != RobotState.Enabled) return;
         if (_laneNextLaunch == null || _laneNextLaunch.Length != laneCount) _laneNextLaunch = new float[laneCount];
+        if (Time.time < _nextAnyLaunch) return;
 
         int n = Physics.OverlapBoxNonAlloc(transform.TransformPoint(throatCenter), throatHalfExtents, _throatHits,
                                            transform.rotation, fuelLayers, QueryTriggerInteraction.Ignore);
-        _volley.Clear();
+        if (n == 0) return;
+
+        _readyLanes.Clear();
         for (int lane = 0; lane < laneCount; lane++)
+            if (Time.time >= _laneNextLaunch[lane]) _readyLanes.Add(lane);
+        if (_readyLanes.Count == 0) return;
+
+        int chosenLane = _readyLanes[Random.Range(0, _readyLanes.Count)];
+        float laneX = (chosenLane - (laneCount - 1) * 0.5f) * laneSpacing;
+
+        // the closest ball to the chosen lane
+        Rigidbody ball = null;
+        float best = float.MaxValue;
+        for (int i = 0; i < n; i++)
         {
-            if (Time.time < _laneNextLaunch[lane]) continue;
-            float laneX = (lane - (laneCount - 1) * 0.5f) * laneSpacing;
-
-            // the closest ball (across the shooter) that no other lane has taken this frame
-            Rigidbody ball = null;
-            float best = float.MaxValue;
-            for (int i = 0; i < n; i++)
-            {
-                var body = _throatHits[i].attachedRigidbody;
-                if (body == null || body.isKinematic || body == _rb || _volley.Contains(body)) continue;
-                float dx = Mathf.Abs(transform.InverseTransformPoint(body.position).x - laneX);
-                if (dx < best) { best = dx; ball = body; }
-            }
-            if (ball == null) break;
-
-            _volley.Add(ball);
-            Launch(ball, laneX);
-            _laneNextLaunch[lane] = Time.time + launchInterval;
+            var body = _throatHits[i].attachedRigidbody;
+            if (body == null || body.isKinematic || body == _rb) continue;
+            float dx = Mathf.Abs(transform.InverseTransformPoint(body.position).x - laneX);
+            if (dx < best) { best = dx; ball = body; }
         }
+        if (ball == null) return;
+
+        Launch(ball, laneX);
+        float jitter = 1f + Random.Range(-laneJitter, laneJitter);
+        _laneNextLaunch[chosenLane] = Time.time + launchInterval * jitter;
+        _nextAnyLaunch = Time.time + minShotStagger * Random.Range(0.75f, 1.25f);
     }
 
     private void Launch(Rigidbody ball, float laneX)
     {
-        Vector3 start = transform.TransformPoint(launchPoint + new Vector3(laneX, 0f, 0f));
+        Vector3 jitterOffset = launchPosJitter > 0f
+            ? new Vector3(Random.Range(-launchPosJitter, launchPosJitter), 0f, Random.Range(-launchPosJitter, launchPosJitter))
+            : Vector3.zero;
+        Vector3 start = transform.TransformPoint(launchPoint + new Vector3(laneX, 0f, 0f) + jitterOffset);
         Vector3 velocity;
         if (ManualShoot)
         {

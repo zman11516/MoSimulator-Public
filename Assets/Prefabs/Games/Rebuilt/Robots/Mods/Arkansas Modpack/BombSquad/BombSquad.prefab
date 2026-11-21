@@ -1826,7 +1826,7 @@ MonoBehaviour:
   length: 22.6875
   useBeltMode: 0
   beltLength: 10
-  maxSquish: 0.5
+  maxSquish: 1
   coreFriction: 1
   coreBounce: 0
   rpm: 800
@@ -3382,7 +3382,7 @@ MonoBehaviour:
   length: 22.725
   useBeltMode: 0
   beltLength: 10
-  maxSquish: 0.5
+  maxSquish: 1
   coreFriction: 1
   coreBounce: 0
   rpm: 800
@@ -8697,8 +8697,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 0.26118398, y: 0.0033250565, z: 0.5011632}
-  m_Center: {x: 0, y: 0, z: 0}
+  m_Size: {x: 0.26118398, y: 0.0033250565, z: 0.4611632}
+  m_Center: {x: 0, y: 0, z: 0.02}
 --- !u!1 &2147217954603342366
 GameObject:
   m_ObjectHideFlags: 0
@@ -11464,7 +11464,7 @@ CapsuleCollider:
   m_LayerOverridePriority: 0
   m_IsTrigger: 0
   m_ProvidesContacts: 0
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 2
   m_Radius: 0.009342007
   m_Height: 0.62373745
@@ -14805,8 +14805,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 0.2636041, y: 0.0031750437, z: 0.49989766}
-  m_Center: {x: 0, y: 0, z: 0}
+  m_Size: {x: 0.2636041, y: 0.0031750437, z: 0.45989766}
+  m_Center: {x: 0, y: 0, z: 0.02}
 --- !u!1 &3994386926357538941
 GameObject:
   m_ObjectHideFlags: 0
@@ -26768,8 +26768,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 0.3511818, y: 0.0063501, z: 0.1824326}
-  m_Center: {x: 0.0, y: 0.0, z: 0.0175}
+  m_Size: {x: 0.3511818, y: 0.0063501, z: 0.1524326}
+  m_Center: {x: 0.0, y: 0.0, z: 0.0325}
 --- !u!1 &6721866363406395118
 GameObject:
   m_ObjectHideFlags: 0
@@ -31534,8 +31534,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 0.3510899, y: 0.00635, z: 0.1828506}
-  m_Center: {x: 0.0, y: 0.0, z: 0.0175}
+  m_Size: {x: 0.3510899, y: 0.00635, z: 0.1528506}
+  m_Center: {x: 0.0, y: 0.0, z: 0.0325}
 --- !u!1 &7909565332998152098
 GameObject:
   m_ObjectHideFlags: 0
