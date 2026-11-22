@@ -1274,9 +1274,9 @@ namespace MoSim.EditorTools
             solver.restLengthScale = 1f;
             solver.subSteps = 3;
             // More stretch than 16 (BombSquad uses stretchCompliance=0.0015, shearCompliance=0.0001).
-            solver.stretchCompliance = 0.015f;
-            solver.shearCompliance = 0.001f;
-            solver.bendCompliance = 0.005f;
+            solver.stretchCompliance = 0.02f;
+            solver.shearCompliance = 0.0013f;
+            solver.bendCompliance = 0.006f;
             solver.damping = 0.008f;
             solver.visualSmoothingIntensity = 1f;
             solver.gravity = new Vector3(0f, -9.81f, 0f);
@@ -1290,7 +1290,7 @@ namespace MoSim.EditorTools
 
             PrefabUtility.SaveAsPrefabAsset(root, PrefabPath, out bool saved);
             if (saved) stage.ClearDirtiness();
-            return saved ? "SAVED " + PrefabPath + " with hopper Net (stretchCompliance=0.015)" : "ERROR save failed";
+            return saved ? $"SAVED {PrefabPath} with hopper Net (stretchCompliance={solver.stretchCompliance})" : "ERROR save failed";
         }
     }
 }

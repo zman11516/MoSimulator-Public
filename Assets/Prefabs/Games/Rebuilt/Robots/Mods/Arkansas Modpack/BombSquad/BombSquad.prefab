@@ -36927,7 +36927,7 @@ MonoBehaviour:
   intakeStowedAngle: -106
   agitateWhileShooting: 1
   agitateDelay: 1.5
-  agitateAngle: -20
+  agitateAngle: -65
   agitateHalfPeriod: 0.4
   trenchClearDistance: 1
   intakeRpm: -2000

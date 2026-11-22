@@ -52,7 +52,7 @@ public class BombSquad : RebuiltRobotBase
     [SerializeField] private float intakeStowedAngle = -106f;   // folded up and back inside the frame
     [SerializeField] private bool agitateWhileShooting = true;
     [SerializeField] private float agitateDelay = 1.5f;         // s after shooting starts
-    [SerializeField] private float agitateAngle = -20f;         // arm angle at the top of each swing
+    [SerializeField] private float agitateAngle = -65f;         // arm angle at the top of each swing
     [SerializeField] private float agitateHalfPeriod = 0.4f;    // s per swing direction
     // the raised arm is taller than the trench bar: no agitating within this many m of the trench
     [SerializeField] private float trenchClearDistance = 1f;
