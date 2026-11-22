@@ -109,6 +109,7 @@ public class BombSquad : RebuiltRobotBase
     private RebuiltAutoAimController _aim;
     private Rigidbody _rb;
     private ConfigurableJoint _intakeCfg;
+    private BoxCollider _intakeEntranceBlocker;
     private Collider[] _robotColliders;
     private readonly Collider[] _throatHits = new Collider[16];
     private readonly List<(Collider[] ball, float until)> _ignored = new();
@@ -130,6 +131,7 @@ public class BombSquad : RebuiltRobotBase
         _aim = GetComponent<RebuiltAutoAimController>();
         _rb = GetComponent<Rigidbody>();
         _intakeCfg = intakeJoint ? intakeJoint.GetComponent<ConfigurableJoint>() : null;
+        _intakeEntranceBlocker = intakeJoint ? intakeJoint.transform.Find("IntakeEntranceBlocker")?.GetComponent<BoxCollider>() : null;
         _robotColliders = GetComponentsInChildren<Collider>(true);
         if (fuelLayers.value == 0) fuelLayers = 1 << LayerMask.NameToLayer("GamePiece1");
 
@@ -187,6 +189,8 @@ public class BombSquad : RebuiltRobotBase
         if (IntakeAction || (_intakeDeployed && (_agitating || shoot))) intakeRollers.SetRpm(intakeRpm);
         else if (_intakeDeployed) intakeRollers.SetRpm(intakeHoldRpm);
         else intakeRollers.SetRpm(0f);
+
+        if (_intakeEntranceBlocker != null) _intakeEntranceBlocker.enabled = _agitating;
     }
 
     private void Hopper()
