@@ -47,8 +47,8 @@ public class BombSquad : RebuiltRobotBase
     [SerializeField] private float manualHoodAngle = -10f;
 
     [Header("Intake")]
-    // angles are measured from the prefab pose (0); deployed sits a little above it so the rollers clear the carpet
-    [SerializeField] private float intakeDeployedAngle = -3f;
+    // angles are measured from the prefab pose (0)
+    [SerializeField] private float intakeDeployedAngle = 0f;
     [SerializeField] private float intakeStowedAngle = -106f;   // folded up and back inside the frame
     [SerializeField] private bool agitateWhileShooting = true;
     [SerializeField] private float agitateDelay = 1.5f;         // s after shooting starts
@@ -59,9 +59,9 @@ public class BombSquad : RebuiltRobotBase
     [SerializeField] private float intakeMaxTorque = 400f;       // N*m cap so the intake stalls on trapped fuel instead of lifting the robot
 
     [Header("Roller speeds (sign = direction)")]
-    [SerializeField] private float intakeRpm = -2000f;           // the Fuel Deflector over the intake turns lifted fuel into the hopper
+    [SerializeField] private float intakeRpm = -3000f;          // the Fuel Deflector over the intake turns lifted fuel into the hopper
     [SerializeField] private float intakeHoldRpm = -600f;       // deployed but not intaking: keeps fuel from rolling out
-    [SerializeField] private float rollerBedRpm = -1500f;       // toward the shooter
+    [SerializeField] private float rollerBedRpm = -2500f;       // toward the shooter
     [SerializeField] private float rollerBedReverseRpm = 50f;   // not shooting: gently nudges fuel away from the throat
     [SerializeField] private float kickerRpm = 2500f;
     [SerializeField] private float flywheelSign = -1f;          // flywheel rpm = sign * interpolated rpm
