@@ -962,7 +962,7 @@ MonoBehaviour:
   compressionStiffness: 500
   compressionDamping: 50
   scrubForces: 0
-  motorSlipResponse: 1
+  motorSlipResponse: 0.15
   frictionCoupledToNormal: 0
   frictionCoefficient: 3
   oppositeReaction: 1
@@ -970,7 +970,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 0
   motor: 0
-  ignoreDefaultMaxRpm: 0
+  ignoreDefaultMaxRpm: 1
   models:
   - model: {fileID: 1099280478525953570}
     jointAxis: 2
@@ -1833,7 +1833,7 @@ MonoBehaviour:
   compressionStiffness: 500
   compressionDamping: 50
   scrubForces: 0
-  motorSlipResponse: 1
+  motorSlipResponse: 0.15
   frictionCoupledToNormal: 0
   frictionCoefficient: 5
   oppositeReaction: 1
@@ -1841,7 +1841,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 73
   motor: 0
-  ignoreDefaultMaxRpm: 0
+  ignoreDefaultMaxRpm: 1
   models:
   - model: {fileID: 729898870516147715}
     jointAxis: 0
@@ -1999,7 +1999,7 @@ MonoBehaviour:
   compressionStiffness: 500
   compressionDamping: 50
   scrubForces: 0
-  motorSlipResponse: 1
+  motorSlipResponse: 0.15
   frictionCoupledToNormal: 0
   frictionCoefficient: 3
   oppositeReaction: 1
@@ -2007,7 +2007,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 73
   motor: 0
-  ignoreDefaultMaxRpm: 0
+  ignoreDefaultMaxRpm: 1
   models:
   - model: {fileID: 2860629407498791143}
     jointAxis: 0
@@ -3389,7 +3389,7 @@ MonoBehaviour:
   compressionStiffness: 500
   compressionDamping: 50
   scrubForces: 0
-  motorSlipResponse: 1
+  motorSlipResponse: 0.15
   frictionCoupledToNormal: 0
   frictionCoefficient: 5
   oppositeReaction: 1
@@ -3397,7 +3397,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 73
   motor: 0
-  ignoreDefaultMaxRpm: 0
+  ignoreDefaultMaxRpm: 1
   models:
   - model: {fileID: 1544183107372263105}
     jointAxis: 0
@@ -5153,7 +5153,7 @@ MonoBehaviour:
   compressionStiffness: 500
   compressionDamping: 50
   scrubForces: 0
-  motorSlipResponse: 1
+  motorSlipResponse: 0.15
   frictionCoupledToNormal: 0
   frictionCoefficient: 3
   oppositeReaction: 1
@@ -5161,7 +5161,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 0
   motor: 0
-  ignoreDefaultMaxRpm: 0
+  ignoreDefaultMaxRpm: 1
   models:
   - model: {fileID: 7687300363462957410}
     jointAxis: 2
@@ -7434,7 +7434,7 @@ MonoBehaviour:
   compressionStiffness: 500
   compressionDamping: 50
   scrubForces: 0
-  motorSlipResponse: 1
+  motorSlipResponse: 0.15
   frictionCoupledToNormal: 0
   frictionCoefficient: 3
   oppositeReaction: 1
@@ -7442,7 +7442,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 0
   motor: 0
-  ignoreDefaultMaxRpm: 0
+  ignoreDefaultMaxRpm: 1
   models:
   - model: {fileID: 52244077120868355}
     jointAxis: 2
@@ -10655,7 +10655,7 @@ MonoBehaviour:
   compressionStiffness: 500
   compressionDamping: 50
   scrubForces: 0
-  motorSlipResponse: 1
+  motorSlipResponse: 0.15
   frictionCoupledToNormal: 0
   frictionCoefficient: 3
   oppositeReaction: 1
@@ -10663,7 +10663,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 0
   motor: 0
-  ignoreDefaultMaxRpm: 0
+  ignoreDefaultMaxRpm: 1
   models:
   - model: {fileID: 2064256605470433413}
     jointAxis: 0
@@ -13282,7 +13282,7 @@ Rigidbody:
   m_Drag: 0
   m_AngularDrag: 0.05
   m_CenterOfMass: {x: 0, y: 0, z: 0}
-  m_InertiaTensor: {x: 1, y: 1, z: 1}
+  m_InertiaTensor: {x: 0.05, y: 0.05, z: 0.05}
   m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
   m_IncludeLayers:
     serializedVersion: 2
@@ -19528,7 +19528,7 @@ MonoBehaviour:
   compressionStiffness: 500
   compressionDamping: 50
   scrubForces: 0
-  motorSlipResponse: 1
+  motorSlipResponse: 0.15
   frictionCoupledToNormal: 0
   frictionCoefficient: 3
   oppositeReaction: 1
@@ -19536,7 +19536,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 0
   motor: 0
-  ignoreDefaultMaxRpm: 0
+  ignoreDefaultMaxRpm: 1
   models:
   - model: {fileID: 8230292222598135717}
     jointAxis: 1
@@ -29604,7 +29604,7 @@ MonoBehaviour:
   compressionStiffness: 500
   compressionDamping: 50
   scrubForces: 0
-  motorSlipResponse: 1
+  motorSlipResponse: 0.15
   frictionCoupledToNormal: 0
   frictionCoefficient: 3
   oppositeReaction: 1
@@ -29612,7 +29612,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 0
   motor: 0
-  ignoreDefaultMaxRpm: 0
+  ignoreDefaultMaxRpm: 1
   models:
   - model: {fileID: 1396730514883940205}
     jointAxis: 0
@@ -31457,7 +31457,7 @@ MonoBehaviour:
   compressionStiffness: 500
   compressionDamping: 50
   scrubForces: 0
-  motorSlipResponse: 1
+  motorSlipResponse: 0.15
   frictionCoupledToNormal: 0
   frictionCoefficient: 3
   oppositeReaction: 1
@@ -31465,7 +31465,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 0
   motor: 0
-  ignoreDefaultMaxRpm: 0
+  ignoreDefaultMaxRpm: 1
   models:
   - model: {fileID: 740933432531210322}
     jointAxis: 2
@@ -36798,6 +36798,10 @@ PrefabInstance:
         type: 3}
       insertIndex: 13
       addedObject: {fileID: 9100000000000000402}
+    - targetCorrespondingSourceObject: {fileID: 7705159093392549457, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      insertIndex: 14
+      addedObject: {fileID: 9100000000000000602}
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 3907796793276222132, guid: fac5411432a8c96498487f1fffc06c74,
         type: 3}
@@ -36923,13 +36927,13 @@ MonoBehaviour:
   intakeStowedAngle: -106
   agitateWhileShooting: 1
   agitateDelay: 1.5
-  agitateAngle: -36
+  agitateAngle: -20
   agitateHalfPeriod: 0.4
   trenchClearDistance: 1
-  intakeRpm: -1400
-  intakeHoldRpm: -300
-  rollerBedRpm: -1200
-  rollerBedReverseRpm: 300
+  intakeRpm: -2000
+  intakeHoldRpm: -600
+  rollerBedRpm: -1500
+  rollerBedReverseRpm: 50
   kickerRpm: 2500
   flywheelSign: -1
   manualShooterRpm: 3000
@@ -36979,7 +36983,7 @@ Transform:
   m_GameObject: {fileID: 9100000000000000201}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.335, y: 0.45, z: -0.09}
+  m_LocalPosition: {x: -0.335, y: 0.54, z: -0.09}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -37010,7 +37014,7 @@ Transform:
   m_GameObject: {fileID: 9100000000000000301}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.3019, y: -0.2072, z: -0.5011}
+  m_LocalPosition: {x: -0.3019, y: -0.2767, z: -0.511}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -37041,7 +37045,7 @@ Transform:
   m_GameObject: {fileID: 9100000000000000401}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.335, y: 0.45, z: -0.09}
+  m_LocalPosition: {x: 0.335, y: 0.54, z: -0.09}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -37072,7 +37076,7 @@ Transform:
   m_GameObject: {fileID: 9100000000000000501}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.3501, y: -0.2072, z: -0.5011}
+  m_LocalPosition: {x: 0.3501, y: -0.2767, z: -0.511}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -37201,9 +37205,9 @@ MonoBehaviour:
   netHeight: 0.43
   restLengthScale: 1
   subSteps: 3
-  stretchCompliance: 0.0015
-  shearCompliance: 0.0001
-  bendCompliance: 0.002
+  stretchCompliance: 0.05
+  shearCompliance: 0.001
+  bendCompliance: 0.005
   damping: 0.008
   visualSmoothingIntensity: 1
   gravity: {x: 0, y: -9.81, z: 0}
@@ -37214,3 +37218,56 @@ MonoBehaviour:
     m_Bits: 4096
   collisionSubstepInterval: 2
   anchorBorderFraction: 1
+--- !u!1 &9100000000000000601
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 9100000000000000602}
+  - component: {fileID: 9100000000000000603}
+  m_Layer: 0
+  m_Name: FrontBumperStop
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &9100000000000000602
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9100000000000000601}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0.07, z: 0.375}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1754437062372618944}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!65 &9100000000000000603
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9100000000000000601}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 0.66, y: 0.07, z: 0.06}
+  m_Center: {x: 0, y: 0, z: 0}

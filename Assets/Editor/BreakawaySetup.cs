@@ -12,6 +12,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using MoSimLib;
 using RobotFramework.Components;
 using RobotFramework.Controllers.Drivetrain;
 using UnityEditor;
@@ -1188,6 +1189,108 @@ namespace MoSim.EditorTools
                 if (seen.Any(p => Quaternion.Angle(p, q) < 1f)) continue;
                 seen.Add(q); yield return q;
             }
+        }
+
+        public static string AddHopperNet()
+        {
+            var stage = PrefabStageUtility.OpenPrefab(PrefabPath);
+            if (stage == null) return "ERROR could not open " + PrefabPath;
+            GameObject root = stage.prefabContentsRoot;
+
+            Transform hopperExt = Find(root.transform, "Hopper Extension");
+            if (hopperExt == null) return "ERROR Hopper Extension not found";
+
+            var netMat = AssetDatabase.LoadAssetAtPath<Material>(
+                "Assets/Prefabs/Games/Rebuilt/Robots/CitrusCircuits/Net 2.mat");
+            if (netMat == null) return "ERROR Net 2.mat not found";
+
+            // Remove any previous net / corners / anchors if re-running.
+            var toRemove = new List<GameObject>();
+            foreach (var t in root.GetComponentsInChildren<Transform>(true))
+            {
+                if (t.name == "Net" || t.name.StartsWith("NetCorner") || t.name.StartsWith("NetAnchor_"))
+                    toRemove.Add(t.gameObject);
+            }
+            foreach (var go in toRemove)
+                if (go != null) UnityEngine.Object.DestroyImmediate(go);
+
+            Transform MakeAnchor(string name, Transform parent, Vector3 worldPos)
+            {
+                var go = new GameObject(name);
+                go.transform.SetParent(parent, false);
+                go.transform.position = worldPos;
+                go.transform.rotation = Quaternion.identity;
+                return go.transform;
+            }
+
+            // Back edge (gridX = 0, gridY = 0..7) wraps around the turret cutout (turret is x in [-0.31, 0.03], z in [-0.29, 0.03])
+            // and extends to the back-right corner of the hopper (z = -0.34, top of Part 2.014 / DT-09) so fuel cannot escape there.
+            Transform c00 = MakeAnchor("NetCorner00", root.transform, new Vector3(-0.34f, 0.50f, 0.035f));
+            Transform a01 = MakeAnchor("NetAnchor_0_1", root.transform, new Vector3(-0.21f, 0.50f, 0.035f));
+            Transform a02 = MakeAnchor("NetAnchor_0_2", root.transform, new Vector3(-0.08f, 0.50f, 0.035f));
+            Transform a03 = MakeAnchor("NetAnchor_0_3", root.transform, new Vector3(0.04f, 0.50f, 0.035f));
+            Transform a04 = MakeAnchor("NetAnchor_0_4", root.transform, new Vector3(0.04f, 0.485f, -0.15f));
+            Transform a05 = MakeAnchor("NetAnchor_0_5", root.transform, new Vector3(0.04f, 0.47f, -0.34f));
+            Transform a06 = MakeAnchor("NetAnchor_0_6", root.transform, new Vector3(0.19f, 0.47f, -0.34f));
+            Transform c01 = MakeAnchor("NetCorner01", root.transform, new Vector3(0.34f, 0.47f, -0.34f));
+
+            // Front edge (gridX = 7) on Hopper Extension at the top of Part 16 so the net stretches as it extends.
+            Transform c10 = MakeAnchor("NetCorner10", hopperExt, new Vector3(-0.34f, 0.505f, 0.32f));
+            Transform a72 = MakeAnchor("NetAnchor_7_2", hopperExt, new Vector3(-0.11f, 0.505f, 0.32f));
+            Transform a75 = MakeAnchor("NetAnchor_7_5", hopperExt, new Vector3(0.11f, 0.505f, 0.32f));
+            Transform c11 = MakeAnchor("NetCorner11", hopperExt, new Vector3(0.34f, 0.505f, 0.32f));
+
+            var netGo = new GameObject("Net");
+            netGo.transform.SetParent(root.transform, false);
+            netGo.AddComponent<MeshFilter>();
+            var mr = netGo.AddComponent<MeshRenderer>();
+            mr.sharedMaterial = netMat;
+
+            var solver = netGo.AddComponent<NetSolver>();
+            solver.corner00 = c00;
+            solver.corner10 = c10;
+            solver.corner01 = c01;
+            solver.corner11 = c11;
+            solver.customAnchors = new List<NetSolver.NodeAnchor>
+            {
+                new NetSolver.NodeAnchor { targetTransform = c00, gridX = 0, gridY = 0 },
+                new NetSolver.NodeAnchor { targetTransform = a01, gridX = 0, gridY = 1 },
+                new NetSolver.NodeAnchor { targetTransform = a02, gridX = 0, gridY = 2 },
+                new NetSolver.NodeAnchor { targetTransform = a03, gridX = 0, gridY = 3 },
+                new NetSolver.NodeAnchor { targetTransform = a04, gridX = 0, gridY = 4 },
+                new NetSolver.NodeAnchor { targetTransform = a05, gridX = 0, gridY = 5 },
+                new NetSolver.NodeAnchor { targetTransform = a06, gridX = 0, gridY = 6 },
+                new NetSolver.NodeAnchor { targetTransform = c01, gridX = 0, gridY = 7 },
+                new NetSolver.NodeAnchor { targetTransform = c10, gridX = 7, gridY = 0 },
+                new NetSolver.NodeAnchor { targetTransform = a72, gridX = 7, gridY = 2 },
+                new NetSolver.NodeAnchor { targetTransform = a75, gridX = 7, gridY = 5 },
+                new NetSolver.NodeAnchor { targetTransform = c11, gridX = 7, gridY = 7 },
+            };
+            solver.resolutionX = 8;
+            solver.resolutionY = 8;
+            solver.useAuthoredRestShape = true;
+            solver.netWidth = 0.68f;
+            solver.netHeight = 0.66f;
+            solver.restLengthScale = 1f;
+            solver.subSteps = 3;
+            // More stretch than 16 (BombSquad uses stretchCompliance=0.0015, shearCompliance=0.0001).
+            solver.stretchCompliance = 0.015f;
+            solver.shearCompliance = 0.001f;
+            solver.bendCompliance = 0.005f;
+            solver.damping = 0.008f;
+            solver.visualSmoothingIntensity = 1f;
+            solver.gravity = new Vector3(0f, -9.81f, 0f);
+            solver.particleMass = 0.01f;
+            solver.collisionRadius = 0.045f;
+            int fuelLayer = LayerMask.NameToLayer("GamePiece1");
+            solver.collisionLayers = fuelLayer >= 0 ? (1 << fuelLayer) : 4096;
+            solver.collisionSubstepInterval = 2;
+            solver.anchorBorderFraction = 1f;
+            netGo.AddComponent<NetParentFollower>();
+
+            PrefabUtility.SaveAsPrefabAsset(root, PrefabPath, out bool saved);
+            if (saved) stage.ClearDirtiness();
+            return saved ? "SAVED " + PrefabPath + " with hopper Net (stretchCompliance=0.015)" : "ERROR save failed";
         }
     }
 }

@@ -52,16 +52,17 @@ public class BombSquad : RebuiltRobotBase
     [SerializeField] private float intakeStowedAngle = -106f;   // folded up and back inside the frame
     [SerializeField] private bool agitateWhileShooting = true;
     [SerializeField] private float agitateDelay = 1.5f;         // s after shooting starts
-    [SerializeField] private float agitateAngle = -36f;         // arm angle at the top of each swing
+    [SerializeField] private float agitateAngle = -20f;         // arm angle at the top of each swing
     [SerializeField] private float agitateHalfPeriod = 0.4f;    // s per swing direction
     // the raised arm is taller than the trench bar: no agitating within this many m of the trench
     [SerializeField] private float trenchClearDistance = 1f;
+    [SerializeField] private float intakeMaxTorque = 400f;       // N*m cap so the intake stalls on trapped fuel instead of lifting the robot
 
     [Header("Roller speeds (sign = direction)")]
-    [SerializeField] private float intakeRpm = -1400f;           // the Fuel Deflector over the intake turns lifted fuel into the hopper
-    [SerializeField] private float intakeHoldRpm = -300f;       // deployed but not intaking: keeps fuel from rolling out
-    [SerializeField] private float rollerBedRpm = -1200f;       // toward the shooter
-    [SerializeField] private float rollerBedReverseRpm = 300f;  // not shooting: nudges fuel away from the throat
+    [SerializeField] private float intakeRpm = -2000f;           // the Fuel Deflector over the intake turns lifted fuel into the hopper
+    [SerializeField] private float intakeHoldRpm = -600f;       // deployed but not intaking: keeps fuel from rolling out
+    [SerializeField] private float rollerBedRpm = -1500f;       // toward the shooter
+    [SerializeField] private float rollerBedReverseRpm = 50f;   // not shooting: gently nudges fuel away from the throat
     [SerializeField] private float kickerRpm = 2500f;
     [SerializeField] private float flywheelSign = -1f;          // flywheel rpm = sign * interpolated rpm
     [SerializeField] private float manualShooterRpm = 3000f;
@@ -102,12 +103,12 @@ public class BombSquad : RebuiltRobotBase
     private bool _wasShooting;
     private float _shootStart;
     private bool _agitating;
-    private bool _agitateUp;
-    private float _agitateSwitch;
     private bool _passing;
+    private bool _wasEnabled;
 
     private RebuiltAutoAimController _aim;
     private Rigidbody _rb;
+    private ConfigurableJoint _intakeCfg;
     private Collider[] _robotColliders;
     private readonly Collider[] _throatHits = new Collider[16];
     private readonly List<(Collider[] ball, float until)> _ignored = new();
@@ -128,6 +129,7 @@ public class BombSquad : RebuiltRobotBase
 
         _aim = GetComponent<RebuiltAutoAimController>();
         _rb = GetComponent<Rigidbody>();
+        _intakeCfg = intakeJoint ? intakeJoint.GetComponent<ConfigurableJoint>() : null;
         _robotColliders = GetComponentsInChildren<Collider>(true);
         if (fuelLayers.value == 0) fuelLayers = 1 << LayerMask.NameToLayer("GamePiece1");
 
@@ -179,12 +181,11 @@ public class BombSquad : RebuiltRobotBase
         }
         else
         {
-            _agitateUp = false;
             _intakeTarget = _intakeDeployed ? intakeDeployedAngle : intakeStowedAngle;
         }
 
-        if (IntakeAction) intakeRollers.SetRpm(intakeRpm);
-        else if (_intakeDeployed) intakeRollers.SetRpm(_agitating || shoot ? intakeRpm * 0.5f : intakeHoldRpm);
+        if (IntakeAction || (_intakeDeployed && (_agitating || shoot))) intakeRollers.SetRpm(intakeRpm);
+        else if (_intakeDeployed) intakeRollers.SetRpm(intakeHoldRpm);
         else intakeRollers.SetRpm(0f);
     }
 
@@ -192,12 +193,13 @@ public class BombSquad : RebuiltRobotBase
     {
         // the bed runs toward the shooter while intaking or shooting, otherwise backs fuel off the throat slightly
         if (ShootHeld && Aligned()) rollerBed.SetRpm(rollerBedRpm);
-        else if (IntakeAction) rollerBed.SetRpm(rollerBedRpm * 0.5f);
+        else if (IntakeAction) rollerBed.SetRpm(rollerBedRpm);
         else rollerBed.SetRpm(ShootHeld ? 0f : rollerBedReverseRpm);
     }
 
     private void HandleAutoAim()
     {
+        if (BaseGameManager.Instance == null || BaseGameManager.Instance.RobotState != RobotState.Enabled) return;
         if (!ShootHeld) return;
         SetTargets();
         if (ManualShoot) return;   // manual shot: the driver aims
@@ -261,19 +263,37 @@ public class BombSquad : RebuiltRobotBase
 
     private void UpdateJoints()
     {
+        bool enabled = BaseGameManager.Instance != null && BaseGameManager.Instance.RobotState == RobotState.Enabled;
+        if (!enabled)
+        {
+            if (_wasEnabled && _rb != null)
+            {
+                _rb.angularVelocity = Vector3.zero;
+            }
+            else if (_rb != null && _rb.angularVelocity.sqrMagnitude > 1e-4f)
+            {
+                _rb.angularVelocity *= Mathf.Exp(-10f * Time.fixedDeltaTime);
+            }
+        }
+        _wasEnabled = enabled;
+
         // the prefab pose reads as 0
         intakeJoint.SetTargetAngle(_intakeTarget).withAxis(JointAxis.X).useCustomStartingOffset(0f);
+        if (_intakeCfg != null && enabled)
+        {
+            var drive = _intakeCfg.angularXDrive;
+            drive.maximumForce = _agitating && intakeMaxTorque > 0f ? intakeMaxTorque : Mathf.Infinity;
+            _intakeCfg.angularXDrive = drive;
+        }
         hoodJoint.SetTargetAngle(_hoodTarget).withAxis(JointAxis.X).useCustomStartingOffset(0f);
     }
 
     private void WobbleIntake()
     {
-        if (Time.time >= _agitateSwitch)
-        {
-            _agitateUp = !_agitateUp;
-            _agitateSwitch = Time.time + agitateHalfPeriod;
-        }
-        _intakeTarget = _agitateUp ? agitateAngle : intakeDeployedAngle;
+        float elapsed = Mathf.Max(0f, Time.time - (_shootStart + agitateDelay));
+        float phase = elapsed / Mathf.Max(0.05f, agitateHalfPeriod);
+        float t = 0.5f - 0.5f * Mathf.Cos(phase * Mathf.PI);
+        _intakeTarget = Mathf.Lerp(intakeDeployedAngle, agitateAngle, t);
     }
 
     // ---- direct launch (multi-wide: staggered across lanes so balls fire naturally rather than in a rigid line)
