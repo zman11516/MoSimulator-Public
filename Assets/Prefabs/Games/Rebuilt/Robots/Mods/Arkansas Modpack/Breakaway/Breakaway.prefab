@@ -68539,7 +68539,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: eca3c46f25311c64687bf0b5e0428b9b, type: 2}
+  - {fileID: 2100000, guid: 1b849a53d7784ad0adba426ae0091c7f, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -68617,8 +68617,8 @@ MonoBehaviour:
   netHeight: 0.66
   restLengthScale: 1
   subSteps: 3
-  stretchCompliance: 0.2
-  shearCompliance: 0.0001
+  stretchCompliance: 0.3
+  shearCompliance: 0.001
   bendCompliance: 0.01
   damping: 0.25
   visualSmoothingIntensity: 1
@@ -71578,8 +71578,8 @@ MonoBehaviour:
   useStartingOffset: 0
   wrappingSettings:
     useNoWrap: 1
-    noWrapMin: -200
-    noWrapMax: 200
+    noWrapMin: -230
+    noWrapMax: 230
   trackContinuously: 1
   steerFeedFowardConstant: 0
   currentAngle: 0
@@ -73021,13 +73021,13 @@ MonoBehaviour:
   manualHoodAngle: 0
   manualShooterRpm: 3000
   turretTolerance: 1.5
-  trenchClearDistance: 0.8
+  trenchClearDistance: 0.25
   agitateWhileShooting: 1
   agitateDelay: 1.5
   agitateAngle: -40
   agitateHalfPeriod: 0.4
   agitateRollerDivider: 4
-  holdRollerDivider: 2
+  holdRollerDivider: 5.3333335
   intakeRunOn: 1
   hopperPulseInterval: 0.9
   hopperPulsePause: 0.12

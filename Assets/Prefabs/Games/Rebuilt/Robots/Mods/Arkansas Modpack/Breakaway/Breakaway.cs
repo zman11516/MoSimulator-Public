@@ -58,7 +58,7 @@ public class Breakaway : RebuiltTurretRobot
     [SerializeField] private float manualHoodAngle = 15f;
     [SerializeField] private float manualShooterRpm = 3000f;
     [SerializeField] private float turretTolerance = 1.5f;        // degrees (roller-physics mode only)
-    [SerializeField] private float trenchClearDistance = 0.8f;    // m before the trench bar: hood forced down, no firing
+    [SerializeField] private float trenchClearDistance = 0.25f;   // m before the trench bar: hood forced down, no firing
 
     [Header("Hopper Agitation")]
     // While shooting (and not intaking) for agitateDelay seconds, a deployed intake arm swings between deployed and
@@ -68,14 +68,10 @@ public class Breakaway : RebuiltTurretRobot
     [SerializeField] private float agitateAngle = -40f;           // arm angle at the top of each swing (stowed side)
     [SerializeField] private float agitateHalfPeriod = 0.4f;      // s per swing direction
     [SerializeField] private float agitateRollerDivider = 4f;     // intake rollers at 1/4 speed while agitating
-    // A deployed intake whose rollers were fully stopped left the front of the hopper open: fuel rolled back out of
-    // it while driving / agitating with a full hopper. Like 1706, a deployed intake keeps turning slowly inward.
-    // Play-mode probe: fuel left lying in the intake mouth (on the floor under the arm) when intake was released; at
-    // 1/5 speed the rollers could not lift it over, and it rolled out when the robot backed up.
-    [SerializeField] private float holdRollerDivider = 2f;        // deployed, not intaking: intake rollers at 1/2 speed
-    [SerializeField] private float intakeRunOn = 1f;              // s at full speed after intake is released (clears the mouth)
-    [SerializeField] private float hopperPulseInterval = 0.9f;    // s between brief hopper-roller pauses while shooting
-    [SerializeField] private float hopperPulsePause = 0.12f;      // s pause to relieve bridging pressure at the feeder mouth
+    // When deployed and not intaking, an invisible IntakeEntranceBlocker collider closes the intake mouth so fuel
+    // cannot roll back out (or enter) while the intake rollers stay stopped (rollers only run while intaking or agitating).
+    [SerializeField] private float jamDetectDelay = 0.35f;        // s aligned without a launch before reversing hopper rollers
+    [SerializeField] private float jamReverseDuration = 0.18f;    // s hopper rollers reverse to break a feeder-mouth arch
 
     [Header("Direct Launch")]
     [SerializeField] private bool directLaunch = true;
@@ -121,12 +117,14 @@ public class Breakaway : RebuiltTurretRobot
     private bool _agitateUp;
     private float _agitateSwitch;
 
-    private float _intakeRunOnUntil;
+    private BoxCollider _intakeEntranceBlocker;
 
     private bool ShootHeld =>OuttakeAction || ManualShoot || AutoPass;
     private bool NearTrench() => turret != null && UnderTrench(turret.transform, trenchClearDistance);
 
     private float _nextLaunch;
+    private float _lastLaunchOrAlignTime;
+    private float _reverseUntil;
     private float _lastFlightTime;
     private int _launched;
     private AudioSource _shotSource;
@@ -152,6 +150,7 @@ public class Breakaway : RebuiltTurretRobot
         _hopperOut = false;
         _hopperLocked = false;
         AddFuelBackstop();
+        AddIntakeEntranceBlocker();
         InitAudio();
 
         Scheduler.AddSubsystems(IntakeArm);
@@ -183,6 +182,26 @@ public class Breakaway : RebuiltTurretRobot
             dynamicFriction = 0f, staticFriction = 0f, bounciness = 0f,
             frictionCombine = PhysicMaterialCombine.Minimum, bounceCombine = PhysicMaterialCombine.Minimum
         };
+    }
+
+    private void AddIntakeEntranceBlocker()
+    {
+        if (intakeJoint == null) return;
+        Transform existing = intakeJoint.transform.Find("IntakeEntranceBlocker");
+        if (existing != null)
+        {
+            _intakeEntranceBlocker = existing.GetComponent<BoxCollider>();
+            if (_intakeEntranceBlocker != null) _intakeEntranceBlocker.enabled = false;
+            return;
+        }
+
+        var wall = new GameObject("IntakeEntranceBlocker");
+        wall.transform.SetParent(intakeJoint.transform, false);
+        wall.transform.localPosition = new Vector3(0f, -0.07f, 0.30f);
+        wall.transform.localRotation = Quaternion.identity;
+        _intakeEntranceBlocker = wall.AddComponent<BoxCollider>();
+        _intakeEntranceBlocker.size = new Vector3(0.56f, 0.24f, 0.03f);
+        _intakeEntranceBlocker.enabled = false;
     }
 
     // The Robot layer collides with itself and a joint only ignores its own two bodies, so the moving parts (turret,
@@ -218,12 +237,9 @@ public class Breakaway : RebuiltTurretRobot
 
     private void IntakeArm()
     {
-        if (IntakeAction)
-        {
-            _intakeDeployed = true;
-            _intakeRunOnUntil = Time.time + intakeRunOn;   // keeps refreshing while held; counts down on release
-        }
+        if (IntakeAction) _intakeDeployed = true;
         if (StowAction) _intakeDeployed = false;
+        if (_intakeEntranceBlocker != null) _intakeEntranceBlocker.enabled = _intakeDeployed && !IntakeAction;
 
         bool shoot = ShootHeld;
         if (shoot && !_wasShooting) _shootStart = Time.time;
@@ -306,6 +322,8 @@ public class Breakaway : RebuiltTurretRobot
         kickerBelts.Stop();
         shooterWheels.SetRpm(0f);
         _hoodTarget = hoodStowAngle;
+        _lastLaunchOrAlignTime = Time.time;
+        _reverseUntil = 0f;
     }
 
     protected override void IntakingAndShooting()
@@ -320,12 +338,10 @@ public class Breakaway : RebuiltTurretRobot
         SpinUpAndHold();
     }
 
-    // deployed: turn slowly inward so fuel can't roll back out the front; stowed: stopped
+    // intake rollers only run when intaking or agitating
     private void HoldIntake()
     {
-        if (!_intakeDeployed) intakeRollers.Stop();
-        else if (Time.time >= _intakeRunOnUntil) intakeRollers.DivideSpeed(holdRollerDivider);
-        // else: just released - full speed (no override) to pull in what is still in the mouth
+        intakeRollers.Stop();
     }
 
     protected override void Feed()
@@ -343,6 +359,8 @@ public class Breakaway : RebuiltTurretRobot
         kickerBelts.Stop();
         shooterWheels.SetRpm(0f);
         _hoodTarget = hoodStowAngle;
+        _lastLaunchOrAlignTime = Time.time;
+        _reverseUntil = 0f;
     }
 
     // The base dispatch only treats OuttakeAction as shooting: Manual Shoot / Auto Pass alone fell through to Idling()
@@ -384,12 +402,18 @@ public class Breakaway : RebuiltTurretRobot
             feederRollers.Stop();
             kickerRollers.Stop();
             kickerBelts.Stop();
+            _lastLaunchOrAlignTime = Time.time;
+            _reverseUntil = 0f;
         }
-        else if (hopperPulseInterval > 0f && hopperPulsePause > 0f)
+        else if (Time.time < _reverseUntil)
         {
-            float elapsed = Time.time - _shootStart;
-            if (elapsed >= hopperPulseInterval && (elapsed % hopperPulseInterval) < hopperPulsePause)
-                hopperRollers.Stop();
+            hopperRollers.FlipRpm();
+        }
+        else if (jamDetectDelay > 0f && jamReverseDuration > 0f && Time.time - _lastLaunchOrAlignTime >= jamDetectDelay)
+        {
+            _reverseUntil = Time.time + jamReverseDuration;
+            _lastLaunchOrAlignTime = _reverseUntil;
+            hopperRollers.FlipRpm();
         }
     }
 
@@ -443,6 +467,8 @@ public class Breakaway : RebuiltTurretRobot
         ball.velocity = velocity;
         ball.angularVelocity = Vector3.zero;
         _nextLaunch = Time.time + launchInterval;
+        _lastLaunchOrAlignTime = Time.time;
+        _reverseUntil = 0f;
         _launched++;
         if (_shotSource != null && shotClip != null)
         {

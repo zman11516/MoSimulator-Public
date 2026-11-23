@@ -1201,8 +1201,8 @@ namespace MoSim.EditorTools
             if (hopperExt == null) return "ERROR Hopper Extension not found";
 
             var netMat = AssetDatabase.LoadAssetAtPath<Material>(
-                "Assets/Prefabs/Games/Rebuilt/Robots/CitrusCircuits/Net 2.mat");
-            if (netMat == null) return "ERROR Net 2.mat not found";
+                Dir + "BreakawayNet.mat");
+            if (netMat == null) return "ERROR BreakawayNet.mat not found";
 
             // Remove any previous net / corners / anchors if re-running.
             var toRemove = new List<GameObject>();
