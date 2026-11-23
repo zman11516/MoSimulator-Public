@@ -8,6 +8,7 @@ using RobotFramework.Components;
 using RobotFramework.Controllers.PidSystems;
 using RobotFramework.Enums;
 using UnityEngine;
+using UnityEngine.Audio;
 
 // FRC 3937 Breakaway: turret shooter with an adjustable hood, pivoting over-the-bumper intake, roller-bed hopper with
 // a telescoping front extension, feeder tower. No climber in the CAD. Built on the docs' Rebuilt turret template
@@ -73,6 +74,8 @@ public class Breakaway : RebuiltTurretRobot
     // 1/5 speed the rollers could not lift it over, and it rolled out when the robot backed up.
     [SerializeField] private float holdRollerDivider = 2f;        // deployed, not intaking: intake rollers at 1/2 speed
     [SerializeField] private float intakeRunOn = 1f;              // s at full speed after intake is released (clears the mouth)
+    [SerializeField] private float hopperPulseInterval = 0.9f;    // s between brief hopper-roller pauses while shooting
+    [SerializeField] private float hopperPulsePause = 0.12f;      // s pause to relieve bridging pressure at the feeder mouth
 
     [Header("Direct Launch")]
     [SerializeField] private bool directLaunch = true;
@@ -93,6 +96,11 @@ public class Breakaway : RebuiltTurretRobot
     [SerializeField] private float manualShotSpeed = 9f;          // m/s straight out of the turret (Manual Shoot)
     [SerializeField] private float manualShotElevation = 55f;     // degrees
     [SerializeField] private float ignoreTurretTime = 0.3f;       // s a launched ball ignores the turret's colliders
+
+    [Header("Audio")]
+    [SerializeField] private AudioClip shotClip;
+    [SerializeField] private float shotVolume = 0.25f;
+    [SerializeField] private float shotPitch = 1.15f;
 
     [Header("Fuel Backstop")]
     // Roller-physics mode: fuel rising through the turret centre could be flicked out the back by the flywheel's
@@ -121,6 +129,7 @@ public class Breakaway : RebuiltTurretRobot
     private float _nextLaunch;
     private float _lastFlightTime;
     private int _launched;
+    private AudioSource _shotSource;
     private Collider[] _turretColliders;
     private readonly Collider[] _throatHits = new Collider[16];
     private readonly List<(Collider[] ball, float until)> _ignored = new();
@@ -144,6 +153,7 @@ public class Breakaway : RebuiltTurretRobot
         _hopperLocked = false;
         AddFuelBackstop();          // before IgnoreSelfCollisions so the wall ignores the robot's own colliders
         IgnoreSelfCollisions();
+        InitAudio();
 
         Scheduler.AddSubsystems(IntakeArm);
         Scheduler.AddProtectedSystem(UpdateJoints);
@@ -283,7 +293,8 @@ public class Breakaway : RebuiltTurretRobot
     // ---- rollers: each runs at its Inspector rpm unless stopped here (Stop() lasts one frame)
     protected override void Intaking()
     {
-        // intake + hopper run; nothing reaches the shooter
+        // intake + gentle hopper run; nothing reaches the shooter
+        hopperRollers.DivideSpeed(2f);
         feederRollers.Stop();
         kickerRollers.Stop();
         kickerBelts.Stop();
@@ -368,6 +379,12 @@ public class Breakaway : RebuiltTurretRobot
             kickerRollers.Stop();
             kickerBelts.Stop();
         }
+        else if (hopperPulseInterval > 0f && hopperPulsePause > 0f)
+        {
+            float elapsed = Time.time - _shootStart;
+            if (elapsed >= hopperPulseInterval && (elapsed % hopperPulseInterval) < hopperPulsePause)
+                hopperRollers.Stop();
+        }
     }
 
     // ---- direct launch
@@ -421,6 +438,26 @@ public class Breakaway : RebuiltTurretRobot
         ball.angularVelocity = Vector3.zero;
         _nextLaunch = Time.time + launchInterval;
         _launched++;
+        if (_shotSource != null && shotClip != null)
+        {
+            _shotSource.pitch = shotPitch * Random.Range(0.95f, 1.05f);
+            _shotSource.PlayOneShot(shotClip, shotVolume);
+        }
+    }
+
+    private void InitAudio()
+    {
+        if (shotClip == null) return;
+        _shotSource = gameObject.AddComponent<AudioSource>();
+        _shotSource.playOnAwake = false;
+        _shotSource.loop = false;
+        _shotSource.spatialBlend = 0.4f;
+        var mixer = Resources.Load<AudioMixerGroup>("MainAudioMixer");
+        if (mixer != null)
+        {
+            var groups = mixer.audioMixer.FindMatchingGroups("RobotSounds");
+            if (groups.Length > 0) _shotSource.outputAudioMixerGroup = groups[0];
+        }
     }
 
     // Peak the arc `apexAbove` m over the higher of start / target, then come down onto the target: steep entry into the

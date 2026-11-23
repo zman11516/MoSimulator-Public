@@ -8,6 +8,7 @@ using RobotFramework.Components;
 using RobotFramework.Controllers.PidSystems;
 using RobotFramework.Enums;
 using UnityEngine;
+using UnityEngine.Audio;
 
 // FRC 16 Bomb Squad: pivoting over-the-bumper intake, roller-bed hopper, fixed shooter (no turret, no adjustable hood),
 // no climber in the CAD. Same layout as the base game's Competitive Concept (1114-style): the drivetrain turns to aim.
@@ -94,6 +95,11 @@ public class BombSquad : RebuiltRobotBase
     [SerializeField] private float manualShotElevation = 55f;   // degrees
     [SerializeField] private float ignoreRobotTime = 0.3f;      // s a launched ball ignores the robot's colliders
 
+    [Header("Audio")]
+    [SerializeField] private AudioClip shotClip;
+    [SerializeField] private float shotVolume = 0.25f;
+    [SerializeField] private float shotPitch = 1.15f;
+
     [Header("Debug")]
     [SerializeField] private bool debugShooting = true;         // logs state twice a second while intake / shoot is held
 
@@ -118,6 +124,7 @@ public class BombSquad : RebuiltRobotBase
     private readonly List<int> _readyLanes = new();
     private int _launched;
     private float _nextDebug;
+    private AudioSource _shotSource;
 
     private bool ShootHeld => OuttakeAction || ManualShoot || AutoPass;
 
@@ -138,6 +145,7 @@ public class BombSquad : RebuiltRobotBase
         _intakeDeployed = false;
         _intakeTarget = intakeStowedAngle;
         IgnoreSelfCollisions();
+        InitAudio();
 
         Scheduler.AddSubsystems(Intake, Hopper, HandleAutoAim, Shooter);
         Scheduler.AddProtectedSystem(UpdateJoints);
@@ -374,6 +382,26 @@ public class BombSquad : RebuiltRobotBase
         ball.velocity = velocity;
         ball.angularVelocity = Vector3.zero;
         _launched++;
+        if (_shotSource != null && shotClip != null)
+        {
+            _shotSource.pitch = shotPitch * Random.Range(0.95f, 1.05f);
+            _shotSource.PlayOneShot(shotClip, shotVolume);
+        }
+    }
+
+    private void InitAudio()
+    {
+        if (shotClip == null) return;
+        _shotSource = gameObject.AddComponent<AudioSource>();
+        _shotSource.playOnAwake = false;
+        _shotSource.loop = false;
+        _shotSource.spatialBlend = 0.4f;
+        var mixer = Resources.Load<AudioMixerGroup>("MainAudioMixer");
+        if (mixer != null)
+        {
+            var groups = mixer.audioMixer.FindMatchingGroups("RobotSounds");
+            if (groups.Length > 0) _shotSource.outputAudioMixerGroup = groups[0];
+        }
     }
 
     // Peak the arc `apexAbove` m over the higher of start / target, then come down onto the target.

@@ -2037,7 +2037,7 @@ MonoBehaviour:
   maxSquish: 0.5
   coreFriction: 1
   coreBounce: 0
-  rpm: 3000
+  rpm: 1500
   compressionStiffness: 500
   compressionDamping: 50
   scrubForces: 0
@@ -2552,16 +2552,16 @@ MonoBehaviour:
     jointAxis: 2
     reversed: 0
     multiplier: 1
-  rollerSound: {fileID: 0}
+  rollerSound: {fileID: 8300000, guid: d5c397cc9cf59bb438b6e5a30d88a98d, type: 3}
   playbackSpeed: 1
   pitchMultiplier: 0.0005
-  movementAudioPitchRange: {x: 0.95, y: 1.1}
-  volumeMultiplier: 0.0005
-  movementAudioVolumeRange: {x: 0.1, y: 0.25}
+  movementAudioPitchRange: {x: 0.8, y: 0.95}
+  volumeMultiplier: 0.002
+  movementAudioVolumeRange: {x: 0.05, y: 0.3}
   audioPitchSmoothSpeed: 8
   audioVolumeSmoothSpeed: 8
   audioResponseExponent: 0.75
-  negativeRangeAudio: 0
+  negativeRangeAudio: 1
   atRangeTollerance: 0.02
   trajectoryTracer: 0
   realRpm: 0
@@ -5340,7 +5340,7 @@ MonoBehaviour:
   maxSquish: 0.5
   coreFriction: 1
   coreBounce: 0
-  rpm: 3000
+  rpm: 1500
   compressionStiffness: 500
   compressionDamping: 50
   scrubForces: 0
@@ -12556,7 +12556,7 @@ MonoBehaviour:
   maxSquish: 0.5
   coreFriction: 1
   coreBounce: 0
-  rpm: 3000
+  rpm: 1500
   compressionStiffness: 500
   compressionDamping: 50
   scrubForces: 0
@@ -13908,7 +13908,7 @@ MonoBehaviour:
   maxSquish: 0.5
   coreFriction: 1
   coreBounce: 0
-  rpm: 3000
+  rpm: 1500
   compressionStiffness: 500
   compressionDamping: 50
   scrubForces: 0
@@ -13926,16 +13926,16 @@ MonoBehaviour:
     jointAxis: 0
     reversed: 0
     multiplier: 1
-  rollerSound: {fileID: 0}
+  rollerSound: {fileID: 8300000, guid: 9378423fe1c50f0419b9380e03b4ef96, type: 3}
   playbackSpeed: 1
   pitchMultiplier: 0.0005
-  movementAudioPitchRange: {x: 0.95, y: 1.1}
-  volumeMultiplier: 0.0005
-  movementAudioVolumeRange: {x: 0.1, y: 0.25}
+  movementAudioPitchRange: {x: 0.925, y: 1.05}
+  volumeMultiplier: 0.0001
+  movementAudioVolumeRange: {x: 0.1, y: 0.3}
   audioPitchSmoothSpeed: 8
   audioVolumeSmoothSpeed: 8
   audioResponseExponent: 0.75
-  negativeRangeAudio: 0
+  negativeRangeAudio: 1
   atRangeTollerance: 0.02
   trajectoryTracer: 0
   realRpm: 0
@@ -20872,7 +20872,7 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 0.072539166, y: 0.0031750198, z: 0.15203227}
+  m_Size: {x: 0.035, y: 0.0031750198, z: 0.15203227}
   m_Center: {x: 0, y: 0, z: 0}
 --- !u!1 &2769913588255323040
 GameObject:
@@ -32531,11 +32531,11 @@ MonoBehaviour:
   brakeModeMultiplyer: 1
   ignoreDisabledMode: 0
   lockJointOnDisable: 1
-  movementAudioClip: {fileID: 0}
+  movementAudioClip: {fileID: 8300000, guid: ed8d2868ddef1a54793e5c5c2f4ad552, type: 3}
   audioErrorThreshold: 3
   audioErrorDeltaThreshold: 25
   movementAudioPitchRange: {x: 0.95, y: 1.1}
-  movementAudioVolumeRange: {x: 0.1, y: 0.25}
+  movementAudioVolumeRange: {x: 0.3, y: 0.5}
   audioPitchSmoothSpeed: 8
   audioVolumeSmoothSpeed: 8
   audioResponseExponent: 0.75
@@ -33122,16 +33122,16 @@ MonoBehaviour:
     jointAxis: 0
     reversed: 0
     multiplier: 1
-  rollerSound: {fileID: 0}
+  rollerSound: {fileID: 8300000, guid: f1850d68545f15a4d8149170bc15efe5, type: 3}
   playbackSpeed: 1
   pitchMultiplier: 0.0005
-  movementAudioPitchRange: {x: 0.95, y: 1.1}
-  volumeMultiplier: 0.0005
-  movementAudioVolumeRange: {x: 0.1, y: 0.25}
+  movementAudioPitchRange: {x: 0.85, y: 1}
+  volumeMultiplier: 0.0001
+  movementAudioVolumeRange: {x: 0.08, y: 0.25}
   audioPitchSmoothSpeed: 8
   audioVolumeSmoothSpeed: 8
   audioResponseExponent: 0.75
-  negativeRangeAudio: 0
+  negativeRangeAudio: 1
   atRangeTollerance: 0.02
   trajectoryTracer: 0
   realRpm: 0
@@ -48855,7 +48855,7 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 0.072539166, y: 0.0031750198, z: 0.15203227}
+  m_Size: {x: 0.035, y: 0.0031750198, z: 0.15203227}
   m_Center: {x: 0, y: 0, z: 0}
 --- !u!1 &6409636395758789925
 GameObject:
@@ -59836,14 +59836,14 @@ MonoBehaviour:
   brakeModeMultiplyer: 1
   ignoreDisabledMode: 0
   lockJointOnDisable: 1
-  movementAudioClip: {fileID: 0}
-  audioErrorThreshold: 3
-  audioErrorDeltaThreshold: 25
-  movementAudioPitchRange: {x: 0.95, y: 1.1}
-  movementAudioVolumeRange: {x: 0.1, y: 0.25}
+  movementAudioClip: {fileID: 8300000, guid: f899794ea18266c439abb72e7d6adc61, type: 3}
+  audioErrorThreshold: 0.05
+  audioErrorDeltaThreshold: 0.1
+  movementAudioPitchRange: {x: 0.8, y: 0.95}
+  movementAudioVolumeRange: {x: 0.25, y: 0.6}
   audioPitchSmoothSpeed: 8
   audioVolumeSmoothSpeed: 8
-  audioResponseExponent: 0.75
+  audioResponseExponent: 4
   debugPrint: 0
   DebugErrorDeltaInt: 0
   CurrentValue: 0
@@ -62194,16 +62194,16 @@ MonoBehaviour:
     jointAxis: 2
     reversed: 0
     multiplier: 1
-  rollerSound: {fileID: 0}
+  rollerSound: {fileID: 8300000, guid: 9378423fe1c50f0419b9380e03b4ef96, type: 3}
   playbackSpeed: 1
   pitchMultiplier: 0.0005
-  movementAudioPitchRange: {x: 0.95, y: 1.1}
-  volumeMultiplier: 0.0005
-  movementAudioVolumeRange: {x: 0.1, y: 0.25}
+  movementAudioPitchRange: {x: 0.925, y: 1.05}
+  volumeMultiplier: 0.0001
+  movementAudioVolumeRange: {x: 0.1, y: 0.3}
   audioPitchSmoothSpeed: 8
   audioVolumeSmoothSpeed: 8
   audioResponseExponent: 0.75
-  negativeRangeAudio: 0
+  negativeRangeAudio: 1
   atRangeTollerance: 0.02
   trajectoryTracer: 0
   realRpm: 0
@@ -63060,16 +63060,16 @@ MonoBehaviour:
     jointAxis: 2
     reversed: 0
     multiplier: 1
-  rollerSound: {fileID: 0}
+  rollerSound: {fileID: 8300000, guid: 9378423fe1c50f0419b9380e03b4ef96, type: 3}
   playbackSpeed: 1
   pitchMultiplier: 0.0005
-  movementAudioPitchRange: {x: 0.95, y: 1.1}
-  volumeMultiplier: 0.0005
-  movementAudioVolumeRange: {x: 0.1, y: 0.25}
+  movementAudioPitchRange: {x: 0.925, y: 1.05}
+  volumeMultiplier: 0.0001
+  movementAudioVolumeRange: {x: 0.1, y: 0.3}
   audioPitchSmoothSpeed: 8
   audioVolumeSmoothSpeed: 8
   audioResponseExponent: 0.75
-  negativeRangeAudio: 0
+  negativeRangeAudio: 1
   atRangeTollerance: 0.02
   trajectoryTracer: 0
   realRpm: 0
@@ -69610,6 +69610,19 @@ MonoBehaviour:
     Flywheel: {fileID: 0}
     Multiplier: 1
     flipped: 0
+  - IntRoller: {fileID: 8904986256567762749}
+    GenRoller: {fileID: 0}
+    PvffController: {fileID: 0}
+    Flywheel: {fileID: 0}
+    Multiplier: 1
+    flipped: 0
+  - IntRoller: {fileID: 4102679692562258496}
+    GenRoller: {fileID: 0}
+    PvffController: {fileID: 0}
+    Flywheel: {fileID: 0}
+    Multiplier: 1
+    flipped: 0
+
 --- !u!1 &8895576735575502576
 GameObject:
   m_ObjectHideFlags: 0
@@ -70622,7 +70635,7 @@ MonoBehaviour:
   maxSquish: 0.5
   coreFriction: 1
   coreBounce: 0
-  rpm: 3000
+  rpm: 1500
   compressionStiffness: 500
   compressionDamping: 50
   scrubForces: 0
@@ -72798,6 +72811,22 @@ PrefabInstance:
       propertyPath: maxVelocity._obfuscationKey
       value: 1879186963
       objectReference: {fileID: 0}
+    - target: {fileID: 8555372738434930653, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: audioMixerGroup
+      value: 
+      objectReference: {fileID: 4093094553572483033, guid: ed4b10d8b69fb1240aaf15a3cba9d0bd,
+        type: 2}
+    - target: {fileID: 8555372738434930653, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: gearAudioResource
+      value: 
+      objectReference: {fileID: 8300000, guid: affe685e481d252409ce6efa8d637caa, type: 3}
+    - target: {fileID: 8555372738434930653, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: treadAudioResource
+      value: 
+      objectReference: {fileID: 8300000, guid: a678915028b06f14a96455d7b29c3fab, type: 3}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects:
@@ -73014,6 +73043,9 @@ MonoBehaviour:
   manualShotSpeed: 9
   manualShotElevation: 55
   ignoreTurretTime: 0.3
+  shotClip: {fileID: 8300000, guid: 4ba0822a76f984745bc76bf206effafa, type: 3}
+  shotVolume: 0.25
+  shotPitch: 1
   addFuelBackstop: 1
   backstopCenter: {x: 0.087, y: 0.045, z: 0}
   backstopSize: {x: 0.01, y: 0.09, z: 0.16}
