@@ -30676,7 +30676,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 5627646176876005583, guid: 81ad7dfe469df49439e01c7b376b22e3, type: 3}
+  - {fileID: 2100000, guid: 339858c0f551322428e19e88715e1fb1, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -35960,7 +35960,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 5627646176876005583, guid: 81ad7dfe469df49439e01c7b376b22e3, type: 3}
+  - {fileID: 2100000, guid: 339858c0f551322428e19e88715e1fb1, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -69622,7 +69622,6 @@ MonoBehaviour:
     Flywheel: {fileID: 0}
     Multiplier: 1
     flipped: 0
-
 --- !u!1 &8895576735575502576
 GameObject:
   m_ObjectHideFlags: 0
@@ -72773,6 +72772,12 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8555372738434930653, guid: fac5411432a8c96498487f1fffc06c74,
         type: 3}
+      propertyPath: audioMixerGroup
+      value: 
+      objectReference: {fileID: 4093094553572483033, guid: ed4b10d8b69fb1240aaf15a3cba9d0bd,
+        type: 2}
+    - target: {fileID: 8555372738434930653, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
       propertyPath: motor.motorType
       value: 1
       objectReference: {fileID: 0}
@@ -72788,9 +72793,19 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8555372738434930653, guid: fac5411432a8c96498487f1fffc06c74,
         type: 3}
+      propertyPath: gearAudioResource
+      value: 
+      objectReference: {fileID: 8300000, guid: affe685e481d252409ce6efa8d637caa, type: 3}
+    - target: {fileID: 8555372738434930653, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
       propertyPath: realWorldWeightLbs
       value: 135
       objectReference: {fileID: 0}
+    - target: {fileID: 8555372738434930653, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: treadAudioResource
+      value: 
+      objectReference: {fileID: 8300000, guid: a678915028b06f14a96455d7b29c3fab, type: 3}
     - target: {fileID: 8555372738434930653, guid: fac5411432a8c96498487f1fffc06c74,
         type: 3}
       propertyPath: mechanicalLossPercent
@@ -72811,22 +72826,6 @@ PrefabInstance:
       propertyPath: maxVelocity._obfuscationKey
       value: 1879186963
       objectReference: {fileID: 0}
-    - target: {fileID: 8555372738434930653, guid: fac5411432a8c96498487f1fffc06c74,
-        type: 3}
-      propertyPath: audioMixerGroup
-      value: 
-      objectReference: {fileID: 4093094553572483033, guid: ed4b10d8b69fb1240aaf15a3cba9d0bd,
-        type: 2}
-    - target: {fileID: 8555372738434930653, guid: fac5411432a8c96498487f1fffc06c74,
-        type: 3}
-      propertyPath: gearAudioResource
-      value: 
-      objectReference: {fileID: 8300000, guid: affe685e481d252409ce6efa8d637caa, type: 3}
-    - target: {fileID: 8555372738434930653, guid: fac5411432a8c96498487f1fffc06c74,
-        type: 3}
-      propertyPath: treadAudioResource
-      value: 
-      objectReference: {fileID: 8300000, guid: a678915028b06f14a96455d7b29c3fab, type: 3}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects:
@@ -72914,10 +72913,13 @@ MonoBehaviour:
     position: {x: 0, y: 0}
     rotation: 0
   bumpers:
-    bumperMeshes: []
+    bumperMeshes:
+    - {fileID: 6834631976070754465}
+    - {fileID: 6899300112085854727}
     materialIndex: 0
-    blueBumperMaterial: {fileID: 0}
-    redBumperMaterial: {fileID: 0}
+    blueBumperMaterial: {fileID: 2100000, guid: 339858c0f551322428e19e88715e1fb1,
+      type: 2}
+    redBumperMaterial: {fileID: 2100000, guid: 8891c8be8334c264dbe596d910db7283, type: 2}
     Vanity:
       AllowVanity: 0
       VanityType: 0
@@ -73027,6 +73029,8 @@ MonoBehaviour:
   agitateRollerDivider: 4
   holdRollerDivider: 2
   intakeRunOn: 1
+  hopperPulseInterval: 0.9
+  hopperPulsePause: 0.12
   directLaunch: 1
   fuelLayers:
     serializedVersion: 2

@@ -21,7 +21,7 @@ MonoBehaviour:
       type: 3}
     mainMenuPrefab: {fileID: 7449178992152932579, guid: bd9ea444880e47b499d83e4ab520e9bb,
       type: 3}
-    spawnSelectionPrefab: {fileID: 1076655121521327079, guid: cb9e018429be09944858cda484e3376f,
+    spawnSelectionPrefab: {fileID: 864987144348473251, guid: cb9e018429be09944858cda484e3376f,
       type: 3}
     preloadGamePiece: {fileID: 2886892246794840118, guid: 96adc4350dc09d942b6bf56af73710ca,
       type: 3}

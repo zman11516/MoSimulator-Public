@@ -151,13 +151,19 @@ public class Breakaway : RebuiltTurretRobot
 
         _hopperOut = false;
         _hopperLocked = false;
-        AddFuelBackstop();          // before IgnoreSelfCollisions so the wall ignores the robot's own colliders
-        IgnoreSelfCollisions();
+        AddFuelBackstop();
         InitAudio();
 
         Scheduler.AddSubsystems(IntakeArm);
         Scheduler.AddProtectedSystem(UpdateJoints);
         Scheduler.AddLateRecursive(UpdatePids);
+    }
+
+    protected override void LateInit()
+    {
+        base.LateInit();
+        // Run after every Start() so InteractionRoller's runtime Wheel_InternalCore colliders are ignored too.
+        IgnoreSelfCollisions();
     }
 
     private void AddFuelBackstop()
