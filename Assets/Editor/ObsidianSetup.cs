@@ -43,11 +43,9 @@ namespace MoSim.EditorTools
         public static void RunBatch()
         {
             string res;
-            try { res = Run(true) + "
-" + Report(); }
+            try { res = Run(true) + System.Environment.NewLine + Report(); }
             catch (System.Exception e) { res = "ERROR " + e; }
-            Debug.Log("OBSIDIAN SETUP
-" + res);
+            Debug.Log("OBSIDIAN SETUP" + System.Environment.NewLine + res);
             EditorApplication.Exit(res.Contains("ERROR") ? 1 : 0);
         }
 
