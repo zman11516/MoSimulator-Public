@@ -8,19 +8,15 @@ using RobotFramework.Components;
 using RobotFramework.Controllers.PidSystems;
 using RobotFramework.Enums;
 using UnityEngine;
-using UnityEngine.Audio;
 
 // FRC 3937 Breakaway: turret shooter with an adjustable hood, pivoting over-the-bumper intake, roller-bed hopper with
 // a telescoping front extension, feeder tower. No climber in the CAD. Built on the docs' Rebuilt turret template
 // (RebuiltTurretRobot): zone dispatch (AllianceZone / NeutralZone) and shooter dispatch (Intaking / Shooting / ... / Feed)
 // come from the base.
 //
-// Shooting ("Direct Launch", on by default): the CAD shooter feeds fuel up the turret centre, ~1.5" off the flywheel /
-// hood-wheel pinch, and the roller physics never launched it consistently (jams, short shots, 2-3 deg side scatter,
-// balls out the back). Instead, when a ball reaches the turret throat and the shot is ready, it is placed just above
-// the shooter exit and given the exact ballistic velocity to the target - the same way the field's Outpost launches
-// fuel (fuel has no drag). The world velocity is set directly, so robot motion is compensated automatically. The
-// wheels and hood still move for looks. Turn Direct Launch off to go back to pure roller physics.
+// Shooting is pure roller physics: the shooter wheels spin at the rpm from the interpolation map and the hood follows
+// its map; once the turret is on target and the wheels are at speed, the feeder, kicker and belts push fuel into them.
+// Fuel is never moved or given a velocity by script.
 public class Breakaway : RebuiltTurretRobot
 {
     [Header("Joints")]
@@ -57,7 +53,7 @@ public class Breakaway : RebuiltTurretRobot
     [SerializeField] private float hoodStowAngle = -25f;          // stowed hood angle when not shooting (to clear the trench)
     [SerializeField] private float manualHoodAngle = 15f;
     [SerializeField] private float manualShooterRpm = 3000f;
-    [SerializeField] private float turretTolerance = 1.5f;        // degrees (roller-physics mode only)
+    [SerializeField] private float turretTolerance = 1.5f;        // degrees
     [SerializeField] private float trenchClearDistance = 0.25f;   // m before the trench bar: hood forced down, no firing
 
     [Header("Hopper Agitation")]
@@ -70,37 +66,10 @@ public class Breakaway : RebuiltTurretRobot
     [SerializeField] private float agitateRollerDivider = 4f;     // intake rollers at 1/4 speed while agitating
     // When deployed and not intaking, an invisible IntakeEntranceBlocker collider closes the intake mouth so fuel
     // cannot roll back out (or enter) while the intake rollers stay stopped (rollers only run while intaking or agitating).
-    [SerializeField] private float jamDetectDelay = 0.35f;        // s aligned without a launch before reversing hopper rollers
-    [SerializeField] private float jamReverseDuration = 0.18f;    // s hopper rollers reverse to break a feeder-mouth arch
-
-    [Header("Direct Launch")]
-    [SerializeField] private bool directLaunch = true;
-    [SerializeField] private LayerMask fuelLayers;                // empty = the "GamePiece1" layer (fuel)
-    // turret-local metres (+Y up, -X = the way the shooter faces). The throat is where fuel rises into the turret,
-    // before it reaches the flywheel; the launch point is above the hood wheel, clear of every roller.
-    // the probe catches any ball that TOUCHES it, so a 2 cm probe takes ball centres within ~9.5 cm: the column only
-    [SerializeField] private Vector3 throatCenter = new Vector3(0f, 0.06f, 0f);
-    [SerializeField] private float throatRadius = 0.02f;
-    [SerializeField] private Vector3 launchPoint = new Vector3(-0.03f, 0.28f, 0f);
-    [SerializeField] private float launchInterval = 0.06f;        // s between balls (~16.7 balls/s)
-    [SerializeField] private float hubApexAboveTarget = 0.9f;     // m the arc peaks above the hub aim point (steeper entry)
-    [SerializeField] private float hubApexPerMeter = 0.25f;       // ...or this x distance if higher: keeps long shots
-                                                                  // dropping in at ~50 deg instead of skimming the rim
-    [SerializeField] private float passApexAboveTarget = 1.8f;    // m the arc peaks above a pass target
-    [SerializeField] private float shotSpread = 0f;               // m of random miss at the target (0 = perfect)
-    [SerializeField] private float launchTurretTolerance = 8f;    // degrees: the turret must point roughly at the target
-    [SerializeField] private float manualShotSpeed = 9f;          // m/s straight out of the turret (Manual Shoot)
-    [SerializeField] private float manualShotElevation = 55f;     // degrees
-    [SerializeField] private float ignoreTurretTime = 0.3f;       // s a launched ball ignores the turret's colliders
-
-    [Header("Audio")]
-    [SerializeField] private AudioClip shotClip;
-    [SerializeField] private float shotVolume = 0.25f;
-    [SerializeField] private float shotPitch = 1.15f;
 
     [Header("Fuel Backstop")]
-    // Roller-physics mode: fuel rising through the turret centre could be flicked out the back by the flywheel's
-    // lower edge; this frictionless wall closes that gap. Turret-local metres. (Harmless in Direct Launch.)
+    // Fuel rising through the turret centre could be flicked out the back by the flywheel's lower edge; this
+    // frictionless wall closes that gap. Turret-local metres.
     [SerializeField] private bool addFuelBackstop = true;
     [SerializeField] private Vector3 backstopCenter = new Vector3(0.087f, 0.045f, 0f);
     [SerializeField] private Vector3 backstopSize = new Vector3(0.01f, 0.09f, 0.16f);
@@ -122,15 +91,6 @@ public class Breakaway : RebuiltTurretRobot
     private bool ShootHeld =>OuttakeAction || ManualShoot || AutoPass;
     private bool NearTrench() => turret != null && UnderTrench(turret.transform, trenchClearDistance);
 
-    private float _nextLaunch;
-    private float _lastLaunchOrAlignTime;
-    private float _reverseUntil;
-    private float _lastFlightTime;
-    private int _launched;
-    private AudioSource _shotSource;
-    private Collider[] _turretColliders;
-    private readonly Collider[] _throatHits = new Collider[16];
-    private readonly List<(Collider[] ball, float until)> _ignored = new();
 
     protected override void Init()
     {
@@ -145,13 +105,11 @@ public class Breakaway : RebuiltTurretRobot
         _intakeDeployed = false;
         _intakeTarget = intakeStowedAngle;
         _hoodTarget = hoodStowAngle;
-        if (fuelLayers.value == 0) fuelLayers = 1 << LayerMask.NameToLayer("GamePiece1");
 
         _hopperOut = false;
         _hopperLocked = false;
         AddFuelBackstop();
         AddIntakeEntranceBlocker();
-        InitAudio();
 
         Scheduler.AddSubsystems(IntakeArm);
         Scheduler.AddProtectedSystem(UpdateJoints);
@@ -289,8 +247,6 @@ public class Breakaway : RebuiltTurretRobot
         // Assign the inherited swmRef (with a parent) and swmSettings in the Inspector.
         if (rb != null && swmRef != null && swmRef.parent != null)
         {
-            // the turret leads a moving target by the real flight time of the last direct-launch shot
-            if (directLaunch && _lastFlightTime > 0f) swmSettings.timeOfFlight = _lastFlightTime;
             base.HandleSwm();
         }
     }
@@ -322,8 +278,6 @@ public class Breakaway : RebuiltTurretRobot
         kickerBelts.Stop();
         shooterWheels.SetRpm(0f);
         _hoodTarget = hoodStowAngle;
-        _lastLaunchOrAlignTime = Time.time;
-        _reverseUntil = 0f;
     }
 
     protected override void IntakingAndShooting()
@@ -346,8 +300,7 @@ public class Breakaway : RebuiltTurretRobot
 
     protected override void Feed()
     {
-        // Aligned(): leave the feeder, kicker and hopper running (no Stop this frame) and launch what reaches the throat
-        if (directLaunch) TryLaunch();
+        // Aligned(): the feeder, kicker, belts and hopper keep running (no Stop this frame) and push fuel into the wheels
     }
 
     protected override void Idling()
@@ -359,15 +312,12 @@ public class Breakaway : RebuiltTurretRobot
         kickerBelts.Stop();
         shooterWheels.SetRpm(0f);
         _hoodTarget = hoodStowAngle;
-        _lastLaunchOrAlignTime = Time.time;
-        _reverseUntil = 0f;
     }
 
     // The base dispatch only treats OuttakeAction as shooting: Manual Shoot / Auto Pass alone fell through to Idling()
     // (feeder, kicker and belts stopped, shooter at 0). Same dispatch, all three shooting inputs.
     protected override void ShooterHandler()
     {
-        RestoreTurretCollisions();
         bool shoot = OuttakeAction || ManualShoot || AutoPass;
         if (shoot)
         {
@@ -385,146 +335,22 @@ public class Breakaway : RebuiltTurretRobot
         if (ManualShoot) return true;   // manual shot: feed without waiting for the turret
         if (turret.IsWrapping()) return false; // hold fuel while the turret unwinds
         float error = Mathf.Abs(turret.GetError());
-        if (directLaunch) return error < launchTurretTolerance;
         return error < turretTolerance && shooterWheels.AtSpeed();
     }
 
     private void SpinUpAndHold()
     {
-        // wheels and hood follow the maps (the real shot in roller-physics mode, looks only in Direct Launch)
+        // wheels and hood follow the maps: they make the shot
         float rpm = ManualShoot ? manualShooterRpm : (float)flywheelInterpolation.Interpolate();
         float hood = ManualShoot ? manualHoodAngle : (float)hoodInterpolation.Interpolate();
         shooterWheels.SetRpm(rpm);
         _hoodTarget = NearTrench() ? hoodStowAngle : Mathf.Clamp(hood, -hoodMaxAngle, hoodMaxAngle);
         if (!Aligned())
         {
-            // hold fuel until the turret is on target (and, for roller physics, the wheels are at speed)
+            // hold fuel until the turret is on target and the wheels are at speed
             feederRollers.Stop();
             kickerRollers.Stop();
             kickerBelts.Stop();
-            _lastLaunchOrAlignTime = Time.time;
-            _reverseUntil = 0f;
-        }
-        else if (Time.time < _reverseUntil)
-        {
-            hopperRollers.FlipRpm();
-        }
-        else if (jamDetectDelay > 0f && jamReverseDuration > 0f && Time.time - _lastLaunchOrAlignTime >= jamDetectDelay)
-        {
-            _reverseUntil = Time.time + jamReverseDuration;
-            _lastLaunchOrAlignTime = _reverseUntil;
-            hopperRollers.FlipRpm();
-        }
-    }
-
-    // ---- direct launch
-    private void TryLaunch()
-    {
-        if (BaseGameManager.Instance == null || BaseGameManager.Instance.RobotState != RobotState.Enabled) return;
-        if (Time.time + 0.002f < _nextLaunch) return;
-
-        Transform t = turret.transform;
-        int n = Physics.OverlapSphereNonAlloc(t.TransformPoint(throatCenter), throatRadius, _throatHits, fuelLayers,
-                                              QueryTriggerInteraction.Ignore);
-        Rigidbody ball = null;
-        for (int i = 0; i < n && ball == null; i++)
-        {
-            var body = _throatHits[i].attachedRigidbody;
-            if (body != null && !body.isKinematic && body != rb) ball = body;
-        }
-        if (ball == null) return;
-
-        Vector3 start = t.TransformPoint(launchPoint);
-        Vector3 velocity;
-        if (ManualShoot)
-        {
-            // straight out of the shooter: the turret's -X, tilted up
-            Vector3 flat = Vector3.ProjectOnPlane(-t.right, Vector3.up).normalized;
-            velocity = Quaternion.AngleAxis(-manualShotElevation, Vector3.Cross(Vector3.up, flat)) * flat * manualShotSpeed;
-        }
-        else
-        {
-            Vector3 target = turret.GetCurrentTarget();
-            if (target == Vector3.zero) return;   // no target assigned yet
-            if (shotSpread > 0f)
-            {
-                Vector2 r = Random.insideUnitCircle * shotSpread;
-                target += new Vector3(r.x, 0f, r.y);
-            }
-            float range = Vector3.ProjectOnPlane(target - start, Vector3.up).magnitude;
-            float apexAbove = _passing ? passApexAboveTarget : Mathf.Max(hubApexAboveTarget, hubApexPerMeter * range);
-            velocity = BallisticVelocity(start, target, apexAbove, out _lastFlightTime);
-        }
-
-        // keep the ball off the turret / hood / rollers' colliders while it leaves
-        var ballColliders = ball.GetComponentsInChildren<Collider>();
-        _turretColliders ??= t.GetComponentsInChildren<Collider>(true);
-        SetIgnore(ballColliders, true);
-        _ignored.Add((ballColliders, Time.time + ignoreTurretTime));
-
-        ball.position = start;
-        ball.transform.position = start;
-        ball.velocity = velocity;
-        ball.angularVelocity = Vector3.zero;
-        _nextLaunch = Time.time + launchInterval;
-        _lastLaunchOrAlignTime = Time.time;
-        _reverseUntil = 0f;
-        _launched++;
-        if (_shotSource != null && shotClip != null)
-        {
-            _shotSource.pitch = shotPitch * Random.Range(0.95f, 1.05f);
-            _shotSource.PlayOneShot(shotClip, shotVolume);
-        }
-    }
-
-    private void InitAudio()
-    {
-        if (shotClip == null) return;
-        _shotSource = gameObject.AddComponent<AudioSource>();
-        _shotSource.playOnAwake = false;
-        _shotSource.loop = false;
-        _shotSource.spatialBlend = 0.4f;
-        var mixer = Resources.Load<AudioMixerGroup>("MainAudioMixer");
-        if (mixer != null)
-        {
-            var groups = mixer.audioMixer.FindMatchingGroups("RobotSounds");
-            if (groups.Length > 0) _shotSource.outputAudioMixerGroup = groups[0];
-        }
-    }
-
-    // Peak the arc `apexAbove` m over the higher of start / target, then come down onto the target: steep entry into the
-    // hub at any range. Fuel has no drag, so plain projectile motion is exact.
-    private static Vector3 BallisticVelocity(Vector3 start, Vector3 target, float apexAbove, out float flightTime)
-    {
-        float g = Mathf.Max(0.01f, -Physics.gravity.y);
-        float apex = Mathf.Max(start.y, target.y) + Mathf.Max(0.05f, apexAbove);
-        float vy = Mathf.Sqrt(2f * g * (apex - start.y));
-        float tUp = vy / g;
-        float tDown = Mathf.Sqrt(2f * (apex - target.y) / g);
-        flightTime = tUp + tDown;
-        Vector3 flat = target - start;
-        flat.y = 0f;
-        return flat / flightTime + Vector3.up * vy;
-    }
-
-    private void RestoreTurretCollisions()
-    {
-        for (int i = _ignored.Count - 1; i >= 0; i--)
-        {
-            if (Time.time < _ignored[i].until) continue;
-            SetIgnore(_ignored[i].ball, false);
-            _ignored.RemoveAt(i);
-        }
-    }
-
-    private void SetIgnore(Collider[] ball, bool ignore)
-    {
-        if (_turretColliders == null) return;
-        foreach (var b in ball)
-        {
-            if (b == null) continue;
-            foreach (var c in _turretColliders)
-                if (c != null && !c.isTrigger) Physics.IgnoreCollision(b, c, ignore);
         }
     }
 
@@ -545,7 +371,7 @@ public class Breakaway : RebuiltTurretRobot
         Debug.Log($"[Breakaway] intake={(bool)IntakeAction} deployed={_intakeDeployed} arm={(float)intakeJoint.GetAngle():F0}/{_intakeTarget:F0} " +
                   $"hopperOut={_hopperOut} locked={_hopperLocked} hopperPos={hopperIn:F1}in/{hopperExtendedDistance:F1} | " +
                   $"outtake={(bool)OuttakeAction} manual={(bool)ManualShoot} pass={(bool)AutoPass} passing={_passing} " +
-                  $"agitating={_agitating} nearTrench={NearTrench()} turretErr={err:F1} aligned={Aligned()} dist={dist:F2}m flight={_lastFlightTime:F2}s launched={_launched} | " +
+                  $"agitating={_agitating} nearTrench={NearTrench()} turretErr={err:F1} aligned={Aligned()} dist={dist:F2}m | " +
                   $"hood={Mathf.DeltaAngle(0f, (float)hoodJoint.GetAngle()):F1}/{_hoodTarget:F1} | intake {Rpm(intakeRollers)} | hopper {Rpm(hopperRollers)} | feeder {Rpm(feederRollers)} | " +
                   $"belts {Rpm(kickerBelts)} | kicker {Rpm(kickerRollers)} | shooter {Rpm(shooterWheels)}");
     }

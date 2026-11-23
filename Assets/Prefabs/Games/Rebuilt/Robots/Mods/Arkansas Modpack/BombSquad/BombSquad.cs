@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using Games.Rebuilt.Components;
 using Games.Rebuilt.Robots;
 using MoSimCore.BaseClasses.GameManagement;
@@ -8,7 +7,6 @@ using RobotFramework.Components;
 using RobotFramework.Controllers.PidSystems;
 using RobotFramework.Enums;
 using UnityEngine;
-using UnityEngine.Audio;
 
 // FRC 16 Bomb Squad: pivoting over-the-bumper intake, roller-bed hopper, fixed shooter (no turret, no adjustable hood),
 // no climber in the CAD. Same layout as the base game's Competitive Concept (1114-style): the drivetrain turns to aim.
@@ -17,10 +15,8 @@ using UnityEngine.Audio;
 // fuel moves. The defaults were worked out from the CAD: intake and roller bed run negative to pull fuel in toward
 // the shooter at the back. If a mechanism pushes fuel the wrong way in play mode, flip the sign of its rpm field.
 //
-// Shooting ("Direct Launch", on by default, same as Breakaway): when fuel reaches the shooter throat and the robot is
-// aimed, the ball is placed just above the shooter exit and given the exact ballistic velocity to the target. Fuel has
-// no drag, so the shot is exact and robot motion is compensated automatically. The wheels still spin for looks.
-// Turn Direct Launch off to use pure roller physics (flywheel rpm comes from the interpolation map).
+// Shooting is pure roller physics: the flywheel spins at the rpm from the interpolation map, and once the robot is
+// aimed and the flywheel is at speed the kickers feed fuel into it. Fuel is never moved or given a velocity by script.
 public class BombSquad : RebuiltRobotBase
 {
     [Header("Joints")]
@@ -30,8 +26,7 @@ public class BombSquad : RebuiltRobotBase
     [Header("Rollers")]
     [SerializeField] private RollerGroup intakeRollers;         // 2 intake rollers on the arm
     [SerializeField] private RollerGroup rollerBed;             // 4 roller-bed rollers (hopper floor)
-    [SerializeField] private RollerGroup kickerLower;           // small roller at the front of the shooter throat
-    [SerializeField] private RollerGroup kickerUpper;           // small roller above it
+    [SerializeField] private RollerGroup kicker;           // small roller at the front of the shooter throat
     [SerializeField] private RollerGroup flywheel;              // 4" shooter wheel
 
     [Header("PIDs")]
@@ -73,33 +68,6 @@ public class BombSquad : RebuiltRobotBase
     [SerializeField] private float shooterYawOffset = 180f;     // 0 = shooter faces the robot's front, 180 = back
     [SerializeField] private float aimTolerance = 3f;           // degrees of drivetrain error allowed while feeding
 
-    [Header("Direct Launch")]
-    [SerializeField] private bool directLaunch = true;
-    [SerializeField] private LayerMask fuelLayers;              // empty = the "GamePiece1" layer (fuel)
-    // robot-local box at the back of the roller bed / front of the shooter where fuel gets picked up
-    [SerializeField] private Vector3 throatCenter = new Vector3(0f, 0.2f, -0.099f);
-    [SerializeField] private Vector3 throatHalfExtents = new Vector3(0.27f, 0.12f, 0.11f);
-    [SerializeField] private Vector3 launchPoint = new Vector3(0f, 0.61f, -0.169f);  // robot-local, above the shooter (centre lane)
-    [SerializeField] private float launchInterval = 0.25f;      // s between balls in the same lane
-    // multi-wide shooter: fuel is fired side by side across the shooter, staggered so balls don't form a rigid line
-    [SerializeField, Min(1)] private int laneCount = 4;
-    [SerializeField] private float laneSpacing = 0.14f;         // m between lane centres
-    [SerializeField] private float minShotStagger = 0.045f;     // min s between any two shots across lanes
-    [SerializeField] private float laneJitter = 0.15f;          // fractional +/- timing variation per lane
-    [SerializeField] private float launchPosJitter = 0.015f;    // m of slight +/- position variation at exit
-    [SerializeField] private float hubApexAboveTarget = 0.9f;   // m the arc peaks above the hub aim point
-    [SerializeField] private float hubApexPerMeter = 0.25f;     // ...or this x distance if higher
-    [SerializeField] private float passApexAboveTarget = 1.8f;
-    [SerializeField] private float shotSpread = 0f;             // m of random miss at the target (0 = perfect)
-    [SerializeField] private float manualShotSpeed = 9f;        // m/s out of the shooter (Manual Shoot)
-    [SerializeField] private float manualShotElevation = 55f;   // degrees
-    [SerializeField] private float ignoreRobotTime = 0.3f;      // s a launched ball ignores the robot's colliders
-
-    [Header("Audio")]
-    [SerializeField] private AudioClip shotClip;
-    [SerializeField] private float shotVolume = 0.25f;
-    [SerializeField] private float shotPitch = 1.15f;
-
     [Header("Debug")]
     [SerializeField] private bool debugShooting = true;         // logs state twice a second while intake / shoot is held
 
@@ -117,14 +85,7 @@ public class BombSquad : RebuiltRobotBase
     private ConfigurableJoint _intakeCfg;
     private BoxCollider _intakeEntranceBlocker;
     private Collider[] _robotColliders;
-    private readonly Collider[] _throatHits = new Collider[16];
-    private readonly List<(Collider[] ball, float until)> _ignored = new();
-    private float[] _laneNextLaunch;
-    private float _nextAnyLaunch;
-    private readonly List<int> _readyLanes = new();
-    private int _launched;
     private float _nextDebug;
-    private AudioSource _shotSource;
 
     private bool ShootHeld => OuttakeAction || ManualShoot || AutoPass;
 
@@ -140,12 +101,10 @@ public class BombSquad : RebuiltRobotBase
         _intakeCfg = intakeJoint ? intakeJoint.GetComponent<ConfigurableJoint>() : null;
         _intakeEntranceBlocker = intakeJoint ? intakeJoint.transform.Find("IntakeEntranceBlocker")?.GetComponent<BoxCollider>() : null;
         _robotColliders = GetComponentsInChildren<Collider>(true);
-        if (fuelLayers.value == 0) fuelLayers = 1 << LayerMask.NameToLayer("GamePiece1");
 
         _intakeDeployed = false;
         _intakeTarget = intakeStowedAngle;
         IgnoreSelfCollisions();
-        InitAudio();
 
         Scheduler.AddSubsystems(Intake, Hopper, HandleAutoAim, Shooter);
         Scheduler.AddProtectedSystem(UpdateJoints);
@@ -242,18 +201,15 @@ public class BombSquad : RebuiltRobotBase
     {
         if (ManualShoot) return true;
         if (Mathf.Abs(_aim.GetRotationError()) > aimTolerance) return false;
-        return directLaunch || flywheel.AtSpeed();
+        return flywheel.AtSpeed();
     }
 
     private void Shooter()
     {
-        RestoreRobotCollisions();
-
         if (!ShootHeld)
         {
             flywheel.SetRpm(0f);
-            kickerLower.SetRpm(0f);
-            kickerUpper.SetRpm(0f);
+            kicker.SetRpm(0f);
             _hoodTarget = 0f;   // CAD pose: lowest, fits under the trench
             DebugState();
             return;
@@ -267,9 +223,7 @@ public class BombSquad : RebuiltRobotBase
         _hoodTarget = NearTrench() ? 0f : Mathf.Clamp(hood, -hoodMaxAngle, hoodMaxAngle);
 
         bool feed = Aligned();
-        kickerLower.SetRpm(feed ? kickerRpm : 0f);
-        kickerUpper.SetRpm(feed ? kickerRpm : 0f);
-        if (feed && directLaunch) TryLaunch();
+        kicker.SetRpm(feed ? kickerRpm : 0f);
         DebugState();
     }
 
@@ -308,134 +262,6 @@ public class BombSquad : RebuiltRobotBase
         _intakeTarget = Mathf.Lerp(intakeDeployedAngle, agitateAngle, t);
     }
 
-    // ---- direct launch (multi-wide: staggered across lanes so balls fire naturally rather than in a rigid line)
-    private void TryLaunch()
-    {
-        if (BaseGameManager.Instance == null || BaseGameManager.Instance.RobotState != RobotState.Enabled) return;
-        if (_laneNextLaunch == null || _laneNextLaunch.Length != laneCount) _laneNextLaunch = new float[laneCount];
-        if (Time.time < _nextAnyLaunch) return;
-
-        int n = Physics.OverlapBoxNonAlloc(transform.TransformPoint(throatCenter), throatHalfExtents, _throatHits,
-                                           transform.rotation, fuelLayers, QueryTriggerInteraction.Ignore);
-        if (n == 0) return;
-
-        _readyLanes.Clear();
-        for (int lane = 0; lane < laneCount; lane++)
-            if (Time.time >= _laneNextLaunch[lane]) _readyLanes.Add(lane);
-        if (_readyLanes.Count == 0) return;
-
-        int chosenLane = _readyLanes[Random.Range(0, _readyLanes.Count)];
-        float laneX = (chosenLane - (laneCount - 1) * 0.5f) * laneSpacing;
-
-        // the closest ball to the chosen lane
-        Rigidbody ball = null;
-        float best = float.MaxValue;
-        for (int i = 0; i < n; i++)
-        {
-            var body = _throatHits[i].attachedRigidbody;
-            if (body == null || body.isKinematic || body == _rb) continue;
-            float dx = Mathf.Abs(transform.InverseTransformPoint(body.position).x - laneX);
-            if (dx < best) { best = dx; ball = body; }
-        }
-        if (ball == null) return;
-
-        Launch(ball, laneX);
-        float jitter = 1f + Random.Range(-laneJitter, laneJitter);
-        _laneNextLaunch[chosenLane] = Time.time + launchInterval * jitter;
-        _nextAnyLaunch = Time.time + minShotStagger * Random.Range(0.75f, 1.25f);
-    }
-
-    private void Launch(Rigidbody ball, float laneX)
-    {
-        Vector3 jitterOffset = launchPosJitter > 0f
-            ? new Vector3(Random.Range(-launchPosJitter, launchPosJitter), 0f, Random.Range(-launchPosJitter, launchPosJitter))
-            : Vector3.zero;
-        Vector3 start = transform.TransformPoint(launchPoint + new Vector3(laneX, 0f, 0f) + jitterOffset);
-        Vector3 velocity;
-        if (ManualShoot)
-        {
-            Vector3 flat = Quaternion.AngleAxis(shooterYawOffset, Vector3.up) *
-                           Vector3.ProjectOnPlane(transform.forward, Vector3.up).normalized;
-            velocity = Quaternion.AngleAxis(-manualShotElevation, Vector3.Cross(Vector3.up, flat)) * flat * manualShotSpeed;
-        }
-        else
-        {
-            Vector3 target = _aim.GetCurrentTarget();
-            if (target == Vector3.zero) return;   // no target assigned yet
-            if (shotSpread > 0f)
-            {
-                Vector2 r = Random.insideUnitCircle * shotSpread;
-                target += new Vector3(r.x, 0f, r.y);
-            }
-            float range = Vector3.ProjectOnPlane(target - start, Vector3.up).magnitude;
-            float apexAbove = _passing ? passApexAboveTarget : Mathf.Max(hubApexAboveTarget, hubApexPerMeter * range);
-            velocity = BallisticVelocity(start, target, apexAbove);
-        }
-
-        // keep the ball off the robot's colliders while it leaves
-        var ballColliders = ball.GetComponentsInChildren<Collider>();
-        SetIgnore(ballColliders, true);
-        _ignored.Add((ballColliders, Time.time + ignoreRobotTime));
-
-        ball.position = start;
-        ball.transform.position = start;
-        ball.velocity = velocity;
-        ball.angularVelocity = Vector3.zero;
-        _launched++;
-        if (_shotSource != null && shotClip != null)
-        {
-            _shotSource.pitch = shotPitch * Random.Range(0.95f, 1.05f);
-            _shotSource.PlayOneShot(shotClip, shotVolume);
-        }
-    }
-
-    private void InitAudio()
-    {
-        if (shotClip == null) return;
-        _shotSource = gameObject.AddComponent<AudioSource>();
-        _shotSource.playOnAwake = false;
-        _shotSource.loop = false;
-        _shotSource.spatialBlend = 0.4f;
-        var mixer = Resources.Load<AudioMixerGroup>("MainAudioMixer");
-        if (mixer != null)
-        {
-            var groups = mixer.audioMixer.FindMatchingGroups("RobotSounds");
-            if (groups.Length > 0) _shotSource.outputAudioMixerGroup = groups[0];
-        }
-    }
-
-    // Peak the arc `apexAbove` m over the higher of start / target, then come down onto the target.
-    private static Vector3 BallisticVelocity(Vector3 start, Vector3 target, float apexAbove)
-    {
-        float g = Mathf.Max(0.01f, -Physics.gravity.y);
-        float apex = Mathf.Max(start.y, target.y) + Mathf.Max(0.05f, apexAbove);
-        float vy = Mathf.Sqrt(2f * g * (apex - start.y));
-        float flightTime = vy / g + Mathf.Sqrt(2f * (apex - target.y) / g);
-        Vector3 flat = target - start;
-        flat.y = 0f;
-        return flat / flightTime + Vector3.up * vy;
-    }
-
-    private void RestoreRobotCollisions()
-    {
-        for (int i = _ignored.Count - 1; i >= 0; i--)
-        {
-            if (Time.time < _ignored[i].until) continue;
-            SetIgnore(_ignored[i].ball, false);
-            _ignored.RemoveAt(i);
-        }
-    }
-
-    private void SetIgnore(Collider[] ball, bool ignore)
-    {
-        foreach (var b in ball)
-        {
-            if (b == null) continue;
-            foreach (var c in _robotColliders)
-                if (c != null && !c.isTrigger) Physics.IgnoreCollision(b, c, ignore);
-        }
-    }
-
     private void DebugState()
     {
         if (!debugShooting || !(ShootHeld || IntakeAction) || Time.time < _nextDebug) return;
@@ -443,7 +269,7 @@ public class BombSquad : RebuiltRobotBase
         Debug.Log($"[BombSquad] intake={(bool)IntakeAction} deployed={_intakeDeployed} " +
                   $"arm={(float)intakeJoint.GetAngle():F0}/{_intakeTarget:F0} agitating={_agitating} | " +
                   $"outtake={(bool)OuttakeAction} manual={(bool)ManualShoot} pass={(bool)AutoPass} passing={_passing} " +
-                  $"aimErr={_aim.GetRotationError():F1} aligned={Aligned()} launched={_launched} " +
+                  $"aimErr={_aim.GetRotationError():F1} aligned={Aligned()} " +
                   $"hood={Mathf.DeltaAngle(0f, (float)hoodJoint.GetAngle()):F1}/{_hoodTarget:F1} nearTrench={NearTrench()}");
     }
 }

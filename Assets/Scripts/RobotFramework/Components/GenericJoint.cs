@@ -1218,10 +1218,21 @@ namespace RobotFramework.Components
             _joint.projectionMode = JointProjectionMode.PositionAndRotation;
         }
 
+        private static bool IsValidRotation(Quaternion q)
+        {
+            float sq = q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w;
+            return sq > 1e-6f && !float.IsNaN(sq) && !float.IsInfinity(sq);
+        }
+
         private void RehomeUnlockedAxes()
         {
             var connected = _joint.connectedBody;
             var connectedRotation = connected != null ? connected.rotation : Quaternion.identity;
+            // The reference is zero if the joint locks before Start() set it, and it drifts from unit length as it
+            // is re-multiplied on every lock; rebuild or renormalize it so the rotations below stay valid.
+            if (!IsValidRotation(_lockReferenceRotation))
+                _lockReferenceRotation = Quaternion.Inverse(connectedRotation) * _rigidbody.rotation;
+            _lockReferenceRotation = _lockReferenceRotation.normalized;
             var referenceRotation = connectedRotation * _lockReferenceRotation;
             var jointZ = Vector3.Cross(_joint.axis, _joint.secondaryAxis).normalized;
             var jointY = Vector3.Cross(jointZ, _joint.axis).normalized;
@@ -1246,11 +1257,12 @@ namespace RobotFramework.Components
             if (_joint.angularXMotion == ConfigurableJointMotion.Locked) deltaRotation.x = 0;
             if (_joint.angularYMotion == ConfigurableJointMotion.Locked) deltaRotation.y = 0;
             if (_joint.angularZMotion == ConfigurableJointMotion.Locked) deltaRotation.z = 0;
-            _lockReferenceRotation = _lockReferenceRotation * jointSpace * deltaRotation.normalized * Quaternion.Inverse(jointSpace);
+            var newReference = (_lockReferenceRotation * jointSpace * deltaRotation.normalized * Quaternion.Inverse(jointSpace)).normalized;
+            if (IsValidRotation(newReference)) _lockReferenceRotation = newReference;
 
             // Updating the joint can reset its angular reference, so correct locked-axis
             // drift before rebuilding it at the accepted home rotation.
-            var homeRotation = connectedRotation * _lockReferenceRotation;
+            var homeRotation = (connectedRotation * _lockReferenceRotation).normalized;
             transform.rotation = homeRotation;
             _rigidbody.rotation = homeRotation;
             _rigidbody.WakeUp();

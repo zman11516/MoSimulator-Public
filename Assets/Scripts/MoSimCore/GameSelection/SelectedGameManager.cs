@@ -87,8 +87,8 @@ namespace MoSimCore.GameSelection
             var activeSceneName = SceneManager.GetActiveScene().name;
             foreach (var gameOption in GameOptions)
             {
-                if (gameOption.GameScene.Name == activeSceneName ||
-                    gameOption.MainMenuScene.Name == activeSceneName)
+                if (SafeSceneName(gameOption.GameScene) == activeSceneName ||
+                    SafeSceneName(gameOption.MainMenuScene) == activeSceneName)
                 {
                     SelectedGame = gameOption;
                 }
@@ -97,6 +97,22 @@ namespace MoSimCore.GameSelection
             if (SelectedGame == null && GameOptions.Count > 0)
             {
                 SelectedGame = GameOptions[0];
+            }
+        }
+
+        // A game option can reference scenes that are not in this checkout (e.g. menu scenes left out of the public
+        // project); reading such a reference's name throws, so treat it as "no scene" instead.
+        private static string SafeSceneName(Eflatun.SceneReference.SceneReference scene)
+        {
+            try
+            {
+                return scene != null && scene.UnsafeReason == Eflatun.SceneReference.SceneReferenceUnsafeReason.None
+                    ? scene.Name
+                    : null;
+            }
+            catch (Eflatun.SceneReference.Exceptions.SceneReferenceException)
+            {
+                return null;
             }
         }
     }
