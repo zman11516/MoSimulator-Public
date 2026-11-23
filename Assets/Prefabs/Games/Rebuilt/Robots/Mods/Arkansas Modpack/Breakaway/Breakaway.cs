@@ -82,7 +82,7 @@ public class Breakaway : RebuiltTurretRobot
     [SerializeField] private Vector3 throatCenter = new Vector3(0f, 0.06f, 0f);
     [SerializeField] private float throatRadius = 0.02f;
     [SerializeField] private Vector3 launchPoint = new Vector3(-0.03f, 0.28f, 0f);
-    [SerializeField] private float launchInterval = 0.12f;        // s between balls (~8 balls/s)
+    [SerializeField] private float launchInterval = 0.06f;        // s between balls (~16.7 balls/s)
     [SerializeField] private float hubApexAboveTarget = 0.9f;     // m the arc peaks above the hub aim point (steeper entry)
     [SerializeField] private float hubApexPerMeter = 0.25f;       // ...or this x distance if higher: keeps long shots
                                                                   // dropping in at ~50 deg instead of skimming the rim
@@ -421,7 +421,7 @@ public class Breakaway : RebuiltTurretRobot
     private void TryLaunch()
     {
         if (BaseGameManager.Instance == null || BaseGameManager.Instance.RobotState != RobotState.Enabled) return;
-        if (Time.time < _nextLaunch) return;
+        if (Time.time + 0.002f < _nextLaunch) return;
 
         Transform t = turret.transform;
         int n = Physics.OverlapSphereNonAlloc(t.TransformPoint(throatCenter), throatRadius, _throatHits, fuelLayers,

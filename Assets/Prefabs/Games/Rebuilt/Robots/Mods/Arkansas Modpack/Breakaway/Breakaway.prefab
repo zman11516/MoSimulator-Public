@@ -2037,7 +2037,7 @@ MonoBehaviour:
   maxSquish: 0.5
   coreFriction: 1
   coreBounce: 0
-  rpm: 1500
+  rpm: 2500
   compressionStiffness: 500
   compressionDamping: 50
   scrubForces: 0
@@ -5340,7 +5340,7 @@ MonoBehaviour:
   maxSquish: 0.5
   coreFriction: 1
   coreBounce: 0
-  rpm: 1500
+  rpm: 2500
   compressionStiffness: 500
   compressionDamping: 50
   scrubForces: 0
@@ -12556,7 +12556,7 @@ MonoBehaviour:
   maxSquish: 0.5
   coreFriction: 1
   coreBounce: 0
-  rpm: 1500
+  rpm: 2500
   compressionStiffness: 500
   compressionDamping: 50
   scrubForces: 0
@@ -13908,7 +13908,7 @@ MonoBehaviour:
   maxSquish: 0.5
   coreFriction: 1
   coreBounce: 0
-  rpm: 1500
+  rpm: 2500
   compressionStiffness: 500
   compressionDamping: 50
   scrubForces: 0
@@ -70634,7 +70634,7 @@ MonoBehaviour:
   maxSquish: 0.5
   coreFriction: 1
   coreBounce: 0
-  rpm: 1500
+  rpm: 2500
   compressionStiffness: 500
   compressionDamping: 50
   scrubForces: 0
@@ -73038,7 +73038,7 @@ MonoBehaviour:
   throatCenter: {x: 0, y: 0.06, z: 0}
   throatRadius: 0.02
   launchPoint: {x: -0.03, y: 0.28, z: 0}
-  launchInterval: 0.12
+  launchInterval: 0.06
   hubApexAboveTarget: 0.9
   hubApexPerMeter: 0.25
   passApexAboveTarget: 1.8
