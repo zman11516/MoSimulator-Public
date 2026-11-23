@@ -73031,7 +73031,7 @@ MonoBehaviour:
   intakeRunOn: 1
   hopperPulseInterval: 0.9
   hopperPulsePause: 0.12
-  directLaunch: 1
+  directLaunch: 0
   fuelLayers:
     serializedVersion: 2
     m_Bits: 0

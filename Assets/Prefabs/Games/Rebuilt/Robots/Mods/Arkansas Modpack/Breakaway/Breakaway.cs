@@ -74,7 +74,7 @@ public class Breakaway : RebuiltTurretRobot
     [SerializeField] private float jamReverseDuration = 0.18f;    // s hopper rollers reverse to break a feeder-mouth arch
 
     [Header("Direct Launch")]
-    [SerializeField] private bool directLaunch = true;
+    [SerializeField] private bool directLaunch = false;
     [SerializeField] private LayerMask fuelLayers;                // empty = the "GamePiece1" layer (fuel)
     // turret-local metres (+Y up, -X = the way the shooter faces). The throat is where fuel rises into the turret,
     // before it reaches the flywheel; the launch point is above the hood wheel, clear of every roller.
