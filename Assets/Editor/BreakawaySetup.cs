@@ -304,7 +304,7 @@ namespace MoSim.EditorTools
                     robotSo.FindProperty("swmRef").objectReferenceValue = swmRef.transform;
                     robotSo.FindProperty("swmSettings.timeOfFlight").floatValue = 0.8f;
                     robotSo.FindProperty("swmSettings.velocityDampeningValue").floatValue = 0.15f;
-                    robotSo.FindProperty("swmSettings.shootingDriveMultiplier").floatValue = 0.5f;
+                    robotSo.FindProperty("swmSettings.shootingDriveMultiplier").floatValue = 0.35f;
                     SetPid(robotSo, "turretPid", 0.5f, 0f, 0.1f, 4f);
                 }
                 log.AppendLine("Turret: GenericJoint (Y) + GenericTurret, reference point = SWM Ref");
