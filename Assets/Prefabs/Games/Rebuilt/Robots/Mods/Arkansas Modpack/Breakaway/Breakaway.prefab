@@ -44091,7 +44091,7 @@ MonoBehaviour:
   swmSettings:
     timeOfFlight: 0.8
     velocityDampeningValue: 0.15
-    shootingDriveMultiplier: 0.5
+    shootingDriveMultiplier: 0.379
   turret: {fileID: 520497216281655574}
   hoodJoint: {fileID: 2962225044052544609}
   intakeJoint: {fileID: 5183176544085519854}
@@ -44196,7 +44196,7 @@ MonoBehaviour:
   - {x: 4.5, y: 1.06}
   - {x: 6, y: 1.2}
   - {x: 8, y: 1.4}
-  straightenExit: 0
+  straightenExit: 1
   exitZoneMinHeight: 0.26
   exitZoneMaxHeight: 0.6
   exitZoneRadius: 0.35
