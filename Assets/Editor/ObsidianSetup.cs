@@ -90,13 +90,16 @@ namespace MoSim.EditorTools
                 inst.transform.localRotation = q;
                 Bounds all = WorldBounds(inst), bi = WorldBounds(intake.gameObject);
                 float modY = modules.Average(m => m.GetComponent<Renderer>().bounds.center.y);
-                float score = Mathf.Abs(all.size.y - RobotHeight) * 10f + (bi.center.z > all.center.z ? 0f : 5f) + (modY < all.center.y ? 0f : 5f)
+                // intake end along +Z: the direction from the robot centre to the intake, in plan, must point at +Z
+                Vector3 toIntake = bi.center - all.center; toIntake.y = 0f;
+                float facing = toIntake.sqrMagnitude > 1e-8f ? Vector3.Dot(toIntake.normalized, Vector3.forward) : -1f;
+                float score = Mathf.Abs(all.size.y - RobotHeight) * 10f + (1f - facing) * 5f + (modY < all.center.y ? 0f : 5f)
                               + Quaternion.Angle(q, Quaternion.identity) * 1e-4f;
                 if (score < best) { best = score; bestQ = q; }
             }
             inst.transform.localRotation = bestQ;
             b = WorldBounds(inst);
-            log.AppendLine($"orientation {bestQ.eulerAngles} size {b.size.x:F3} x {b.size.y:F3} x {b.size.z:F3} (score {best:F3})");
+            log.AppendLine($"orientation {bestQ.eulerAngles} size {b.size.x:F3} x {b.size.y:F3} x {b.size.z:F3} (score {best:F3}); intake centre {WorldBounds(intake.gameObject).center - b.center} from the robot centre");
 
             // wheel contact per module: centroid of the module mesh's lowest 4 mm of vertices (the tread under the steer axis)
             var contacts = modules.Select(TreadContact).ToList();
