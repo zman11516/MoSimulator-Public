@@ -1215,7 +1215,7 @@ Transform:
   m_GameObject: {fileID: 224839301217331244}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0.10930361, y: 0.1289, z: 0.0214}
+  m_LocalPosition: {x: 0.1717, y: 0.1253, z: 0.0214}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1568,7 +1568,7 @@ MonoBehaviour:
   maxSquish: 0.5
   coreFriction: 1
   coreBounce: 0
-  rpm: 2500
+  rpm: 3000
   compressionStiffness: 500
   compressionDamping: 50
   scrubForces: 0
@@ -3139,7 +3139,7 @@ MonoBehaviour:
   maxSquish: 0.5
   coreFriction: 1
   coreBounce: 0
-  rpm: 2500
+  rpm: 3000
   compressionStiffness: 500
   compressionDamping: 50
   scrubForces: 0
@@ -4992,7 +4992,7 @@ Transform:
   m_GameObject: {fileID: 1298405629542489390}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0.3393036, y: 0.1134, z: 0.0211}
+  m_LocalPosition: {x: 0.34, y: 0.1214, z: 0.0371}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -6823,7 +6823,7 @@ MonoBehaviour:
   maxSquish: 0.5
   coreFriction: 1
   coreBounce: 0
-  rpm: 2500
+  rpm: 3000
   compressionStiffness: 500
   compressionDamping: 50
   scrubForces: 0
@@ -7502,7 +7502,7 @@ MonoBehaviour:
   maxSquish: 0.5
   coreFriction: 1
   coreBounce: 0
-  rpm: 2500
+  rpm: 3000
   compressionStiffness: 500
   compressionDamping: 50
   scrubForces: 0
@@ -11397,59 +11397,6 @@ BoxCollider:
   m_Enabled: 1
   serializedVersion: 3
   m_Size: {x: 0.044562336, y: 0.0031750198, z: 0.11071472}
-  m_Center: {x: 0, y: 0, z: 0}
---- !u!1 &2742637134521092165
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 6597930847278204851}
-  - component: {fileID: 3216762642823276453}
-  m_Layer: 0
-  m_Name: Box (63)
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &6597930847278204851
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2742637134521092165}
-  serializedVersion: 2
-  m_LocalRotation: {x: 1.0658141e-14, y: 0.66262007, z: 1.0658141e-14, w: 0.7489558}
-  m_LocalPosition: {x: -0.21138392, y: 0.13622648, z: 0.87269527}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 6202076926437712943}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &3216762642823276453
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2742637134521092165}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Size: {x: 0.035, y: 0.0031750198, z: 0.15203227}
   m_Center: {x: 0, y: 0, z: 0}
 --- !u!1 &2770511136076798756
 GameObject:
@@ -15717,7 +15664,6 @@ Transform:
   - {fileID: 4267877873429967159}
   - {fileID: 6230515427565471292}
   - {fileID: 747179027755523021}
-  - {fileID: 6597930847278204851}
   - {fileID: 3013289366503975538}
   - {fileID: 8281601900032975689}
   - {fileID: 6568971763077502486}
@@ -19547,7 +19493,7 @@ Transform:
   m_GameObject: {fileID: 4854584897242152035}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -0.3406964, y: 0.1304, z: 0.0214}
+  m_LocalPosition: {x: -0.339, y: 0.1217, z: 0.0214}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -21293,7 +21239,7 @@ Transform:
   m_GameObject: {fileID: 5133492462138755020}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0.34, y: 0.4828, z: 0.0989}
+  m_LocalPosition: {x: 0.34, y: 0.4843, z: 0.0989}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -21845,7 +21791,7 @@ Transform:
   m_GameObject: {fileID: 5271791390964055092}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -0.11069639, y: 0.1204, z: 0.019}
+  m_LocalPosition: {x: -0.1568, y: 0.1242, z: 0.019}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -24152,7 +24098,7 @@ Transform:
   m_GameObject: {fileID: 5575604123416940103}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0.2718, y: 0.4847, z: 0.0898}
+  m_LocalPosition: {x: 0.161, y: 0.4818, z: 0.0898}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -33773,13 +33719,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 7475112920911730502}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.07107584, y: 0.014439439, z: 0.024317129, w: 0.9970699}
-  m_LocalPosition: {x: -0.507, y: 0.022, z: 0.829}
+  m_LocalRotation: {x: 0.71723133, y: 0.00088796724, z: 0.01608493, w: 0.696649}
+  m_LocalPosition: {x: -0.5049, y: -0.0476, z: 0.9253}
   m_LocalScale: {x: 0.3830813, y: 0.9292901, z: 0.48612735}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 8082647764307256479}
-  m_LocalEulerAnglesHint: {x: 8.108, y: 1.867, z: 2.926}
+  m_LocalEulerAnglesHint: {x: 87.838, y: 139.874, z: 141.106}
 --- !u!65 &8406369123016335257
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -33793,7 +33739,7 @@ BoxCollider:
     m_Bits: 0
   m_ExcludeLayers:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 72
   m_LayerOverridePriority: 0
   m_IsTrigger: 0
   m_ProvidesContacts: 0
@@ -35809,13 +35755,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 7820763082728242425}
   serializedVersion: 2
-  m_LocalRotation: {x: 1.0658141e-14, y: 0.70710677, z: -5.490472e-23, w: 0.7071068}
+  m_LocalRotation: {x: 0.0011997126, y: 0.70719975, z: 0.0016726974, w: 0.70701087}
   m_LocalPosition: {x: -0.31263173, y: -0.061403584, z: 0.96915483}
   m_LocalScale: {x: 1.0000001, y: 1.0000001, z: 1.0000001}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 8082647764307256479}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: -0.038, y: 90.015, z: 0.233}
 --- !u!136 &1285172678496491978
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -37740,7 +37686,7 @@ Transform:
   m_GameObject: {fileID: 8081133006950208889}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -0.08, y: 0.4861, z: 0.0952}
+  m_LocalPosition: {x: -0.1689, y: 0.4832, z: 0.0952}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -39824,7 +39770,7 @@ Transform:
   m_GameObject: {fileID: 8421169787706668245}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -0.3283, y: 0.4856, z: 0.0887}
+  m_LocalPosition: {x: -0.3462, y: 0.483, z: 0.0887}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -41174,11 +41120,11 @@ MonoBehaviour:
   netHeight: 0.66
   restLengthScale: 0.5
   subSteps: 3
-  stretchCompliance: 0.05
+  stretchCompliance: 0.03
   shearCompliance: 0.001
   bendCompliance: 0.01
-  damping: 0.25
-  visualSmoothingIntensity: 0
+  damping: 0.3
+  visualSmoothingIntensity: 1
   gravity: {x: 0, y: -9.81, z: 0}
   particleMass: 0.01
   collisionRadius: 0.05
@@ -42798,7 +42744,7 @@ MonoBehaviour:
   maxSquish: 0.5
   coreFriction: 1
   coreBounce: 0
-  rpm: 2500
+  rpm: 3000
   compressionStiffness: 500
   compressionDamping: 50
   scrubForces: 0
@@ -44240,7 +44186,17 @@ MonoBehaviour:
   guideCenterY: 0.08
   guideSize: {x: 0.15, y: 0.19, z: 0.01}
   frictionlessHoodPlates: 1
-  straightenExit: 1
+  improvedSotm: 1
+  tofByDistance:
+  - {x: 2, y: 0.7}
+  - {x: 2.5, y: 0.8}
+  - {x: 3, y: 0.88}
+  - {x: 3.5, y: 0.97}
+  - {x: 4, y: 1.02}
+  - {x: 4.5, y: 1.06}
+  - {x: 6, y: 1.2}
+  - {x: 8, y: 1.4}
+  straightenExit: 0
   exitZoneMinHeight: 0.26
   exitZoneMaxHeight: 0.6
   exitZoneRadius: 0.35
