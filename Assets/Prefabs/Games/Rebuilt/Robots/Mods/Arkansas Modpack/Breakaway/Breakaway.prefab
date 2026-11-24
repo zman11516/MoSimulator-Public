@@ -21293,7 +21293,7 @@ Transform:
   m_GameObject: {fileID: 5133492462138755020}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0.338, y: 0.486, z: 0.089}
+  m_LocalPosition: {x: 0.34, y: 0.4828, z: 0.0989}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -24152,7 +24152,7 @@ Transform:
   m_GameObject: {fileID: 5575604123416940103}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0.187, y: 0.4847, z: 0.0898}
+  m_LocalPosition: {x: 0.2718, y: 0.4847, z: 0.0898}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -43576,7 +43576,7 @@ PrefabInstance:
     - target: {fileID: 594006664603315679, guid: fac5411432a8c96498487f1fffc06c74,
         type: 3}
       propertyPath: angleOffset
-      value: 80
+      value: 89.5
       objectReference: {fileID: 0}
     - target: {fileID: 594006664603315679, guid: fac5411432a8c96498487f1fffc06c74,
         type: 3}
@@ -43592,6 +43592,11 @@ PrefabInstance:
         type: 3}
       propertyPath: steerFeedFowardConstant
       value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1467435545827704916, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: frictionCoupledToNormal
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 1855692286361340716, guid: fac5411432a8c96498487f1fffc06c74,
         type: 3}
@@ -43813,6 +43818,11 @@ PrefabInstance:
       propertyPath: m_Name
       value: Breakaway
       objectReference: {fileID: 0}
+    - target: {fileID: 4101709592494930568, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 5734830547325406276, guid: fac5411432a8c96498487f1fffc06c74,
         type: 3}
       propertyPath: debugEnabled
@@ -43842,6 +43852,16 @@ PrefabInstance:
         type: 3}
       propertyPath: m_LocalPosition.z
       value: -0.25
+      objectReference: {fileID: 0}
+    - target: {fileID: 7168632592920357357, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: motorSlipResponse
+      value: 0.173
+      objectReference: {fileID: 0}
+    - target: {fileID: 7168632592920357357, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      propertyPath: frictionCoupledToNormal
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7373462326796386536, guid: fac5411432a8c96498487f1fffc06c74,
         type: 3}
@@ -44162,18 +44182,22 @@ MonoBehaviour:
     Isaturation: 0
   flywheelInterpolation:
     interpolationMap:
-    - distance: 2.2
-      value: 3250
-    - distance: 3.2
-      value: 3850
-    - distance: 3.9
-      value: 4350
-    - distance: 4.1
-      value: 4550
+    - distance: 2
+      value: 1540
+    - distance: 2.49
+      value: 1610
+    - distance: 2.92
+      value: 1645
+    - distance: 3.5
+      value: 1800
+    - distance: 4.06
+      value: 1900
+    - distance: 4.64
+      value: 2080
     - distance: 5.5
-      value: 5700
+      value: 2250
     - distance: 8
-      value: 7600
+      value: 2700
     Distance: 0
     Output: 0
     transformOverride: {fileID: 1074308745231436202}
@@ -44209,8 +44233,20 @@ MonoBehaviour:
   agitateHalfPeriod: 0.4
   agitateRollerDivider: 4
   addFuelBackstop: 1
-  backstopCenter: {x: 0.087, y: 0.045, z: 0}
-  backstopSize: {x: 0.01, y: 0.09, z: 0.16}
+  backstopCenter: {x: 0.095, y: 0.095, z: 0}
+  backstopSize: {x: 0.01, y: 0.11, z: 0.16}
+  addCentringGuides: 1
+  guideHalfGap: 0.098
+  guideCenterY: 0.08
+  guideSize: {x: 0.15, y: 0.19, z: 0.01}
+  frictionlessHoodPlates: 1
+  straightenExit: 1
+  exitZoneMinHeight: 0.26
+  exitZoneMaxHeight: 0.6
+  exitZoneRadius: 0.35
+  exitMinSpeed: 2.5
+  exitHoldTime: 0.3
+  exitHoldRadius: 1.2
   debugShooting: 1
 --- !u!114 &5183176544085519854 stripped
 MonoBehaviour:
