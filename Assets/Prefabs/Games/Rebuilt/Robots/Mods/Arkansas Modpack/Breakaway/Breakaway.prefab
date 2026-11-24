@@ -44145,7 +44145,7 @@ MonoBehaviour:
   swmSettings:
     timeOfFlight: 0.8
     velocityDampeningValue: 0.15
-    shootingDriveMultiplier: 0.5
+    shootingDriveMultiplier: 0.35
   turret: {fileID: 520497216281655574}
   hoodJoint: {fileID: 2962225044052544609}
   intakeJoint: {fileID: 5183176544085519854}

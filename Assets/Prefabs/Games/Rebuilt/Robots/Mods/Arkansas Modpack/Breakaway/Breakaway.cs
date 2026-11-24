@@ -87,6 +87,9 @@ public class Breakaway : RebuiltTurretRobot
 
     [Header("Shoot On The Move")]
     [SerializeField] private bool improvedSotm = true;
+    [SerializeField, Range(0f, 1f)] private float shootingTurnMultiplier = 0.35f;
+    [SerializeField, Range(0f, 1f)] private float passingDriveMultiplier = 0.56f;
+    [SerializeField, Range(0f, 1f)] private float passingTurnMultiplier = 0.56f;
     // horizontal distance from the turret to the target (m) -> ball flight time to the rim (s), measured with the shot mapper
     [SerializeField] private Vector2[] tofByDistance =
     {
@@ -155,7 +158,7 @@ public class Breakaway : RebuiltTurretRobot
         AddIntakeEntranceBlocker();
 
         Scheduler.AddSubsystems(IntakeArm);
-        Scheduler.AddProtectedSystem(UpdateJoints);
+        Scheduler.AddProtectedSystem(UpdateJoints, UpdateDriveSpeed);
         Scheduler.AddLateRecursive(UpdatePids);
     }
 
@@ -398,6 +401,30 @@ public class Breakaway : RebuiltTurretRobot
         // the hopper extension goes out the first time the intake deploys (start of match) and stays out
         if (_intakeDeployed) _hopperOut = true;
         DebugState();
+    }
+
+    private void UpdateDriveSpeed()
+    {
+        bool shoot = ShootHeld;
+        bool isShooting = shoot && InAllianceZone() && !AutoPass;
+        bool isPassing = shoot && (!InAllianceZone() || AutoPass);
+
+        float driveMp = 1f;
+        float turnMp = 1f;
+
+        if (isShooting)
+        {
+            driveMp = swmSettings.shootingDriveMultiplier;
+            turnMp = shootingTurnMultiplier;
+        }
+        else if (isPassing)
+        {
+            driveMp = passingDriveMultiplier;
+            turnMp = passingTurnMultiplier;
+        }
+
+        DriveController.SetDriveMp(driveMp);
+        DriveController.SetTurnMp(turnMp);
     }
 
     private void UpdateJoints()
