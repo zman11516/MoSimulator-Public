@@ -44172,13 +44172,13 @@ MonoBehaviour:
   manualHoodAngle: 0
   manualShooterRpm: 3000
   turretTolerance: 1.5
-  trenchClearDistance: 0.25
+  trenchClearDistance: 0.2
   agitateWhileShooting: 1
   agitateDelay: 1.5
   agitateAngle: -40
   agitateHalfPeriod: 0.4
   agitateRollerDivider: 4
-  addFuelBackstop: 1
+  addFuelBackstop: 0
   backstopCenter: {x: 0.095, y: 0.095, z: 0}
   backstopSize: {x: 0.01, y: 0.11, z: 0.16}
   addCentringGuides: 1
@@ -44187,6 +44187,9 @@ MonoBehaviour:
   guideSize: {x: 0.15, y: 0.19, z: 0.01}
   frictionlessHoodPlates: 1
   improvedSotm: 1
+  shootingTurnMultiplier: 0.35
+  passingDriveMultiplier: 0.56
+  passingTurnMultiplier: 0.56
   tofByDistance:
   - {x: 2, y: 0.7}
   - {x: 2.5, y: 0.8}

@@ -131,7 +131,6 @@ public class Breakaway : RebuiltTurretRobot
     private bool _agitateUp;
     private float _agitateSwitch;
 
-    private BoxCollider _intakeEntranceBlocker;
 
     private bool ShootHeld =>OuttakeAction || ManualShoot || AutoPass;
     private bool NearTrench() => turret != null && UnderTrench(turret.transform, trenchClearDistance);
@@ -155,7 +154,6 @@ public class Breakaway : RebuiltTurretRobot
         _hopperOut = false;
         _hopperLocked = false;
         AddFuelBackstop();
-        AddIntakeEntranceBlocker();
 
         Scheduler.AddSubsystems(IntakeArm);
         Scheduler.AddProtectedSystem(UpdateJoints, UpdateDriveSpeed);
@@ -223,26 +221,7 @@ public class Breakaway : RebuiltTurretRobot
         };
     }
 
-    private void AddIntakeEntranceBlocker()
-    {
-        if (intakeJoint == null) return;
-        Transform existing = intakeJoint.transform.Find("IntakeEntranceBlocker");
-        if (existing != null)
-        {
-            _intakeEntranceBlocker = existing.GetComponent<BoxCollider>();
-            if (_intakeEntranceBlocker != null) _intakeEntranceBlocker.enabled = false;
-            return;
-        }
-
-        var wall = new GameObject("IntakeEntranceBlocker");
-        wall.transform.SetParent(intakeJoint.transform, false);
-        wall.transform.localPosition = new Vector3(0f, -0.07f, 0.30f);
-        wall.transform.localRotation = Quaternion.identity;
-        _intakeEntranceBlocker = wall.AddComponent<BoxCollider>();
-        _intakeEntranceBlocker.size = new Vector3(0.56f, 0.24f, 0.03f);
-        _intakeEntranceBlocker.enabled = false;
-    }
-
+ 
     // The Robot layer collides with itself and a joint only ignores its own two bodies, so the moving parts (turret,
     // hood, intake arm, hopper extension) would hit the robot's other colliders - e.g. the arm folding over the
     // retracted hopper walls. Fuel is unaffected (game-piece layers).
@@ -377,7 +356,7 @@ public class Breakaway : RebuiltTurretRobot
     {
         if (IntakeAction) _intakeDeployed = true;
         if (StowAction) _intakeDeployed = false;
-        if (_intakeEntranceBlocker != null) _intakeEntranceBlocker.enabled = _intakeDeployed && !IntakeAction;
+       
 
         bool shoot = ShootHeld;
         if (shoot && !_wasShooting) _shootStart = Time.time;
