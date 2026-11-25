@@ -1117,7 +1117,7 @@ MonoBehaviour:
   useBeltMode: 0
   beltLength: 10
   maxSquish: 0.5
-  coreFriction: 1
+  coreFriction: 0
   coreBounce: 0
   rpm: 800
   compressionStiffness: 500
@@ -4428,7 +4428,7 @@ MonoBehaviour:
   useBeltMode: 0
   beltLength: 10
   maxSquish: 0.5
-  coreFriction: 1
+  coreFriction: 0
   coreBounce: 0
   rpm: 800
   compressionStiffness: 500
@@ -5716,7 +5716,7 @@ MonoBehaviour:
   useBeltMode: 0
   beltLength: 10
   maxSquish: 0.5
-  coreFriction: 1
+  coreFriction: 0
   coreBounce: 0
   rpm: 800
   compressionStiffness: 500
@@ -8206,7 +8206,7 @@ MonoBehaviour:
   useBeltMode: 0
   beltLength: 10
   maxSquish: 0.5
-  coreFriction: 1
+  coreFriction: 0
   coreBounce: 0
   rpm: 800
   compressionStiffness: 500
@@ -22424,8 +22424,8 @@ MonoBehaviour:
   rollerBedRpm: -2500
   rollerBedReverseRpm: 50
   kickerRpm: -2500
-  flywheelSign: -4000
-  manualShooterRpm: 3000
+  flywheelSign: -1
+  manualShooterRpm: 1000
   passRpmMultiplier: 1.2
   shooterYawOffset: 180
   aimTolerance: 3
@@ -22729,8 +22729,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c0d77fda6c744f14aa8a835839b87a13, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  radius: 1.9973617
-  length: 22.000006
+  radius: 1.95
+  length: 24
   useBeltMode: 0
   beltLength: 10
   maxSquish: 1
@@ -22739,7 +22739,7 @@ MonoBehaviour:
   rpm: 800
   compressionStiffness: 500
   compressionDamping: 50
-  scrubForces: 0
+  scrubForces: 100
   motorSlipResponse: 0.15
   frictionCoupledToNormal: 0
   frictionCoefficient: 3
@@ -37229,7 +37229,7 @@ MonoBehaviour:
   useBeltMode: 0
   beltLength: 10
   maxSquish: 0.5
-  coreFriction: 1
+  coreFriction: 0
   coreBounce: 0
   rpm: 800
   compressionStiffness: 500

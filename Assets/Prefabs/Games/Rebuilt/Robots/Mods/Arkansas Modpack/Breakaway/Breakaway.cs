@@ -66,8 +66,12 @@ public class Breakaway : RebuiltTurretRobot
     [SerializeField] private float agitateAngle = -40f;           // arm angle at the top of each swing (stowed side)
     [SerializeField] private float agitateHalfPeriod = 0.4f;      // s per swing direction
     [SerializeField] private float agitateRollerDivider = 4f;     // intake rollers at 1/4 speed while agitating
-    // When deployed and not intaking, an invisible IntakeEntranceBlocker collider closes the intake mouth so fuel
-    // cannot roll back out (or enter) while the intake rollers stay stopped (rollers only run while intaking or agitating).
+
+    [Header("Intake While Shooting")]
+    // While shooting, the intake rollers run inward at their Inspector rpm divided by this (1 = full speed), so fuel
+    // picked up on the move keeps coming in. Agitation still uses agitateRollerDivider.
+    [SerializeField] private bool runIntakeWhileShooting = true;
+    [SerializeField] private float shootingIntakeDivider = 1f;
 
     [Header("Fuel Backstop")]
     // Fuel rising through the turret centre could be flicked out the back by the flywheel's lower edge; this
@@ -512,11 +516,12 @@ public class Breakaway : RebuiltTurretRobot
     protected override void Shooting()
     {
         if (_agitating) intakeRollers.DivideSpeed(agitateRollerDivider);
+        else if (runIntakeWhileShooting) intakeRollers.DivideSpeed(Mathf.Max(1f, shootingIntakeDivider));
         else HoldIntake();
         SpinUpAndHold();
     }
 
-    // intake rollers only run when intaking or agitating
+    // intake rollers run when intaking, shooting (runIntakeWhileShooting) or agitating
     private void HoldIntake()
     {
         intakeRollers.Stop();

@@ -44512,8 +44512,8 @@ MonoBehaviour:
   alliance: 0
   useCustomDefaultSpawn: 1
   defaultSpawn:
-    position: {x: 0, y: 0}
-    rotation: 0
+    position: {x: 3.9, y: 3.4}
+    rotation: -90
   bumpers:
     bumperMeshes:
     - {fileID: 6834631976070754465}
@@ -44584,21 +44584,21 @@ MonoBehaviour:
   flywheelInterpolation:
     interpolationMap:
     - distance: 2
-      value: 1480
+      value: 1380
     - distance: 2.49
-      value: 1550
+      value: 1450
     - distance: 2.92
-      value: 1645
+      value: 1565
     - distance: 3.5
-      value: 1740
+      value: 1640
     - distance: 4.06
-      value: 1840
+      value: 1740
     - distance: 4.64
-      value: 2020
+      value: 1920
     - distance: 5.5
-      value: 2190
+      value: 2090
     - distance: 8
-      value: 2640
+      value: 2540
     Distance: 0
     Output: 0
     transformOverride: {fileID: 1074308745231436202}

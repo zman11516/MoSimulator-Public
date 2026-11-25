@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 01ffd97bda344b518d04b8600ee71ef6, type: 3}
+  m_Name: Arkansas Modpack_WorkshopMetadata
+  m_EditorClassIdentifier: 
+  modpack: {fileID: 11400000, guid: 978828a71485281449440a01359b29d6, type: 2}
+  title: Arkansas Modpack
+  description: 
+  previewImage: {fileID: 2800000, guid: d16de083ce3166d4a8fb57b2660107e2, type: 3}
+  tags: []
+  visibility: 2
+  publishedFileId: 3845585681
+  autoBumpPatchOnBuild: 0
