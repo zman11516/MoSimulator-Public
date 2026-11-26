@@ -24412,6 +24412,12 @@ MonoBehaviour:
     transformOverride: {fileID: 0}
   hoodMaxAngle: 30
   manualHoodAngle: -10
+  addHoodBacker: 1
+  hoodBackerThickness: 0.006
+  hoodBackerInset: 0
+  flywheelScale: 1
+  flywheelOffsetRpm: 0
+  hoodOffsetDegrees: 0
   intakeDeployedAngle: 0
   intakeStowedAngle: -140
   agitateWhileShooting: 1
@@ -24787,7 +24793,7 @@ MonoBehaviour:
   length: 24
   useBeltMode: 0
   beltLength: 10
-  maxSquish: 2.9
+  maxSquish: 2.8
   coreFriction: 1
   coreBounce: 0
   rpm: 800
