@@ -79,6 +79,15 @@ public class BombSquad : RebuiltRobotBase
     [Header("Aiming")]
     [SerializeField] private float shooterYawOffset = 180f;     // 0 = shooter faces the robot's front, 180 = back
     [SerializeField] private float aimTolerance = 3f;           // degrees of drivetrain error allowed while feeding
+    // fuel knocks the hood rods off their angle; hold the kicker until the hood is back within this many degrees
+    [SerializeField] private float hoodFeedTolerance = 1.5f;
+
+    [Header("Shoot On The Move")]
+    // A ball leaves with the robot's velocity added, so 16 aims (and picks range from the maps) at a virtual target:
+    // the real target minus the robot's velocity times the ball's time of flight. Time of flight = distance / speed.
+    [SerializeField] private bool shootOnTheMove = true;
+    [SerializeField] private float sotmBallSpeed = 6f;           // m/s, average horizontal ball speed (lower = more lead)
+    [SerializeField, Range(0.01f, 1f)] private float sotmVelocitySmoothing = 0.2f;  // per physics step
 
     [Header("Debug")]
     [SerializeField] private bool debugShooting = true;         // logs state twice a second while intake / shoot is held
@@ -91,6 +100,8 @@ public class BombSquad : RebuiltRobotBase
     private bool _agitating;
     private bool _passing;
     private bool _wasEnabled;
+    private Vector3 _smoothedVelocity;
+    private Vector3 _virtualTarget;
 
     private RebuiltAutoAimController _aim;
     private Rigidbody _rb;
@@ -247,12 +258,33 @@ public class BombSquad : RebuiltRobotBase
     private void HandleAutoAim()
     {
         if (BaseGameManager.Instance == null || BaseGameManager.Instance.RobotState != RobotState.Enabled) return;
+        // keep the velocity estimate warm so it is settled the moment shooting starts
+        Vector3 v = _rb != null ? _rb.velocity : Vector3.zero;
+        v.y = 0f;
+        _smoothedVelocity = Vector3.Lerp(_smoothedVelocity, v, sotmVelocitySmoothing);
+
         if (!ShootHeld) return;
         SetTargets();
         if (ManualShoot) return;   // manual shot: the driver aims
 
         Vector3 target = _aim.GetCurrentTarget();
-        float theta = Mathf.Atan2(target.x - transform.position.x, target.z - transform.position.z) * Mathf.Rad2Deg;
+        _virtualTarget = target;
+        if (shootOnTheMove && sotmBallSpeed > 0.1f)
+        {
+            // iterate: time of flight depends on the distance to the virtual target
+            for (int i = 0; i < 3; i++)
+            {
+                Vector3 d = _virtualTarget - transform.position;
+                d.y = 0f;
+                float tof = d.magnitude / sotmBallSpeed;
+                _virtualTarget = target - _smoothedVelocity * tof;
+            }
+            // the maps read range to the virtual target, so the shot is lengthened / shortened for the motion too
+            flywheelInterpolation.SetCustomTarget(_virtualTarget);
+            hoodInterpolation.SetCustomTarget(_virtualTarget);
+        }
+
+        float theta = Mathf.Atan2(_virtualTarget.x - transform.position.x, _virtualTarget.z - transform.position.z) * Mathf.Rad2Deg;
         _aim.Aim(theta + shooterYawOffset, 0f);
     }
 
@@ -277,6 +309,7 @@ public class BombSquad : RebuiltRobotBase
     {
         if (ManualShoot) return true;
         if (Mathf.Abs(_aim.GetRotationError()) > aimTolerance) return false;
+        if (Mathf.Abs(Mathf.DeltaAngle((float)hoodJoint.GetAngle(), _hoodTarget)) > hoodFeedTolerance) return false;
         return flywheel.AtSpeed();
     }
 
@@ -348,6 +381,7 @@ public class BombSquad : RebuiltRobotBase
                   $"arm={(float)intakeJoint.GetAngle():F0}/{_intakeTarget:F0} agitating={_agitating} | " +
                   $"outtake={(bool)OuttakeAction} manual={(bool)ManualShoot} pass={(bool)AutoPass} passing={_passing} " +
                   $"aimErr={_aim.GetRotationError():F1} aligned={Aligned()} " +
-                  $"hood={Mathf.DeltaAngle(0f, (float)hoodJoint.GetAngle()):F1}/{_hoodTarget:F1} nearTrench={NearTrench()}");
+                  $"hood={Mathf.DeltaAngle(0f, (float)hoodJoint.GetAngle()):F1}/{_hoodTarget:F1} nearTrench={NearTrench()} " +
+                  $"speed={_smoothedVelocity.magnitude:F1}m/s lead={(_virtualTarget - _aim.GetCurrentTarget()).magnitude:F2}m");
     }
 }

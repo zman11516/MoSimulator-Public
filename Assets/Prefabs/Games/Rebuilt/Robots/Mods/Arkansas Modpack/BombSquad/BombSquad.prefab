@@ -24116,7 +24116,7 @@ MonoBehaviour:
   wheelDiameterInches: 4
   wheelRotationalInertia: 0.002
   mechanicalLossPercent: 2.5
-  frictionCoefficient: 1.3
+  frictionCoefficient: 2
   biteFactor: 0.25
   contactPatchWidthInches: 2.25
   contactTolerance: 0.01
@@ -24415,9 +24415,9 @@ MonoBehaviour:
   addHoodBacker: 1
   hoodBackerThickness: 0.006
   hoodBackerInset: 0
-  flywheelScale: 1
+  flywheelScale: 2.5
   flywheelOffsetRpm: 0
-  hoodOffsetDegrees: 0
+  hoodOffsetDegrees: 5
   intakeDeployedAngle: 0
   intakeStowedAngle: -140
   agitateWhileShooting: 1
@@ -24436,6 +24436,10 @@ MonoBehaviour:
   passRpmMultiplier: 1.2
   shooterYawOffset: 180
   aimTolerance: 3
+  hoodFeedTolerance: 1.5
+  shootOnTheMove: 1
+  sotmBallSpeed: 6
+  sotmVelocitySmoothing: 0.2
   debugShooting: 1
 --- !u!1 &4956223381251280437
 GameObject:
