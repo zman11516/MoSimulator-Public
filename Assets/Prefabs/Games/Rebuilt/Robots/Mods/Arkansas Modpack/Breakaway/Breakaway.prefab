@@ -8034,6 +8034,37 @@ MeshRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!1 &2007970996773227073
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2720098178042495445}
+  m_Layer: 0
+  m_Name: kicker pivot
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2720098178042495445
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2007970996773227073}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0.70706457, y: 0.70706433, z: -0.0077394936, w: -0.007739492}
+  m_LocalPosition: {x: 0.27240232, y: -0.0228, z: 0.0769}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2839043373919674935}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2026761551744862175
 GameObject:
   m_ObjectHideFlags: 0
@@ -30498,13 +30529,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 6918586070578617627}
   serializedVersion: 2
-  m_LocalRotation: {x: 1.4210858e-14, y: 3.552714e-15, z: 3.7865335e-29, w: 1}
-  m_LocalPosition: {x: -0.31263173, y: 0.44570735, z: 0.87601817}
+  m_LocalRotation: {x: 0.00033304028, y: 0.00003644617, z: -0.0006038805, w: 0.99999976}
+  m_LocalPosition: {x: -0.3124309, y: 0.44594932, z: 0.8761436}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 8662964572076475497}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 0.038, y: 0.004, z: -0.069}
 --- !u!33 &5995413998452016898
 MeshFilter:
   m_ObjectHideFlags: 0
@@ -44425,6 +44456,10 @@ PrefabInstance:
         type: 3}
       insertIndex: -1
       addedObject: {fileID: 7569541462327562108}
+    - targetCorrespondingSourceObject: {fileID: 2909666723055646462, guid: fac5411432a8c96498487f1fffc06c74,
+        type: 3}
+      insertIndex: 0
+      addedObject: {fileID: 2720098178042495445}
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 3907796793276222132, guid: fac5411432a8c96498487f1fffc06c74,
         type: 3}
@@ -44473,6 +44508,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d1f241b615b547e394941950c1369b44, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!4 &2839043373919674935 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 2909666723055646462, guid: fac5411432a8c96498487f1fffc06c74,
+    type: 3}
+  m_PrefabInstance: {fileID: 1082966863709279433}
+  m_PrefabAsset: {fileID: 0}
 --- !u!114 &2962225044052544609 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 2746236329773602984, guid: fac5411432a8c96498487f1fffc06c74,
@@ -44620,6 +44661,7 @@ MonoBehaviour:
     Output: 0
     transformOverride: {fileID: 1074308745231436202}
   intakeDeployedAngle: 0
+  startIntakeStowed: 1
   intakeStowedAngle: -120
   hopperExtendedDistance: 12.024173
   hoodMaxAngle: 40
@@ -44633,6 +44675,27 @@ MonoBehaviour:
   agitateAngle: -40
   agitateHalfPeriod: 0.4
   agitateRollerDivider: 4
+  runIntakeWhileShooting: 1
+  shootingIntakeDivider: 1
+  pivotPlateNames:
+  - IN-40 3d Printed
+  - IN-39 3d Printed
+  - Part 57
+  - Part 58
+  pivotPlateLatchTolerance: 1.94
+  bumperGuideNames:
+  - 1/2" Rounded Hex (22.125" L, 13.75mm OD)
+  - 1/2" Rounded Hex (22.125" L, 13.75mm OD).001
+  - IN-08 Stiffener/Guide.001
+  - Part 79
+  - Part 79.001
+  - Part 81
+  - Part 76
+  bumperGuidePivotNames:
+  - pivot
+  bumperGuideStartAngle: -37
+  bumperGuidePushRange: 30
+  bumperGuidePushSpeed: 200
   addFuelBackstop: 0
   backstopCenter: {x: 0.095, y: 0.095, z: 0}
   backstopSize: {x: 0.01, y: 0.11, z: 0.16}

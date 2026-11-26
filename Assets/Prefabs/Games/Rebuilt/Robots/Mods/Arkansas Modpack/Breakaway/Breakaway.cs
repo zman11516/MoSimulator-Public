@@ -48,6 +48,7 @@ public class Breakaway : RebuiltTurretRobot
 
     [Header("Mechanism Values")]
     [SerializeField] private float intakeDeployedAngle = 0f;      // the CAD pose is deployed
+    [SerializeField] private bool startIntakeStowed = true;       // spawn with the arm folded inside the frame (not the CAD pose)
     [SerializeField] private float intakeStowedAngle = -120f;     // folded back over the hopper: 20.4" tall (at -100 the arm
                                                                   // stood 21.6", ~1 cm under the trench bar, and wedged)
     [SerializeField] private float hopperExtendedDistance = 12f;  // inches the extension slides out (set from the CAD)
@@ -72,6 +73,34 @@ public class Breakaway : RebuiltTurretRobot
     // picked up on the move keeps coming in. Agitation still uses agitateRollerDivider.
     [SerializeField] private bool runIntakeWhileShooting = true;
     [SerializeField] private float shootingIntakeDivider = 1f;
+
+    [Header("Intake Pivot Plates")]
+    // Printed plates on the fixed intake (under "Intake / Model", not the arm) that turn on the arm's pivot shaft. They
+    // start up inside the frame with the stowed arm; the first deploy pushes them down with the arm and they stay down
+    // (they never follow the arm back up: stow and agitation leave them in place). Matched by exact object name.
+    [SerializeField] private string[] pivotPlateNames = { "IN-40 3d Printed", "IN-39 3d Printed", "Part 57", "Part 58" };
+    [SerializeField] private float pivotPlateLatchTolerance = 2f; // deg from intakeDeployedAngle at which they lock down
+
+    [Header("Bumper Guide")]
+    // The hanging guide under the intake arm (side plates Part 79 / 79.001, the two bottom hex rods, IN-08.001 and the
+    // Part 81 / 76 brackets) pivots on the IN-36 Spacer.002 / .003 bolts. It starts swung back (bottom toward the robot)
+    // by bumperGuideStartAngle and stays fully back while the arm swings down. When the arm gets within
+    // bumperGuidePushRange degrees of deployed it touches the bumper, which pushes it into its CAD pose (no faster than
+    // bumperGuidePushSpeed, so the push is visible even though the arm moves fast); it stays there for good.
+    // "collider-complex-<name>" colliders move with their part.
+    [SerializeField] private string[] bumperGuideNames =
+    {
+        "1/2\" Rounded Hex (22.125\" L, 13.75mm OD)", "1/2\" Rounded Hex (22.125\" L, 13.75mm OD).001",
+        "IN-08 Stiffener/Guide.001", "Part 79", "Part 79.001", "Part 81", "Part 76"
+    };
+    [SerializeField] private string[] bumperGuidePivotNames = { "IN-36 Spacer.002", "IN-36 Spacer.003" };
+    [SerializeField, Tooltip("Degrees the guide starts swung back (negative = the other way).")]
+    private float bumperGuideStartAngle = 15f;
+    [SerializeField, Tooltip("Contact point: the guide stays fully back until the arm is this many degrees from deployed, " +
+                             "then the bumper pushes it in over the rest of the arm's travel. Small = late contact.")]
+    private float bumperGuidePushRange = 15f;
+    [SerializeField, Tooltip("Fastest the guide swings in once pushed, degrees per second (0 = follow the arm exactly).")]
+    private float bumperGuidePushSpeed = 90f;
 
     [Header("Fuel Backstop")]
     // Fuel rising through the turret centre could be flicked out the back by the flywheel's lower edge; this
@@ -135,6 +164,31 @@ public class Breakaway : RebuiltTurretRobot
     private bool _agitateUp;
     private float _agitateSwitch;
 
+    private struct PivotPlate
+    {
+        public Transform t;
+        public Vector3 cadPos;        // local pose in the CAD (deployed) position
+        public Quaternion cadRot;
+        public Matrix4x4 inArm;       // pose in the intake arm's frame (parent space -> arm space)
+    }
+    private readonly List<PivotPlate> _pivotPlates = new List<PivotPlate>();
+    private bool _platesPushed;       // the first deploy has started pushing them down
+    private bool _platesLatched;      // down for good
+    private float _platesBestAngle;   // most-deployed arm angle seen since the first deploy
+    private Matrix4x4 _platesArmPose; // arm pose (in the plates' parent space) the plates sit at
+
+    private struct GuidePart
+    {
+        public Transform t;
+        public Vector3 cadPos;
+        public Quaternion cadRot;
+        public Vector3 pivot;         // pivot point in the part's parent space
+        public Vector3 axis;          // "swing back" axis in the part's parent space (positive angle = back)
+    }
+    private readonly List<GuidePart> _guideParts = new List<GuidePart>();
+    private float _guideBack;         // 1 = at bumperGuideStartAngle, 0 = CAD pose; only ever decreases
+    private bool _guideLatched;
+
 
     private bool ShootHeld =>OuttakeAction || ManualShoot || AutoPass;
     private bool NearTrench() => turret != null && UnderTrench(turret.transform, trenchClearDistance);
@@ -157,6 +211,8 @@ public class Breakaway : RebuiltTurretRobot
 
         _hopperOut = false;
         _hopperLocked = false;
+        FindPivotPlates();
+        FindBumperGuide();
         AddFuelBackstop();
 
         Scheduler.AddSubsystems(IntakeArm);
@@ -167,9 +223,41 @@ public class Breakaway : RebuiltTurretRobot
     protected override void LateInit()
     {
         base.LateInit();
+        StowIntakeAtSpawn();
         // Run after every Start() so InteractionRoller's runtime Wheel_InternalCore colliders are ignored too.
         IgnoreSelfCollisions();
         AddCentringGuides();
+    }
+
+    // The prefab holds the arm in its CAD (deployed) pose and GenericJoint.Start() records that pose as the angle
+    // reference, so the prefab stays as it is: after every Start() the arm is turned about its joint (free X axis,
+    // anchor on the pivot shaft) to the stowed angle, so the robot spawns with the intake inside the frame instead of
+    // swinging up from deployed. Everything on the arm moves with it.
+    private void StowIntakeAtSpawn()
+    {
+        if (!startIntakeStowed || intakeJoint == null) return;
+        Transform arm = intakeJoint.transform;
+        if (arm.parent == null) return;
+        var joint = arm.GetComponent<ConfigurableJoint>();
+        Vector3 pivot = arm.TransformPoint(joint != null ? joint.anchor : Vector3.zero);
+
+        // GenericJoint reads the angle about the parent's X axis (localRotation), CAD pose = intakeDeployedAngle
+        Quaternion newLocal = Quaternion.AngleAxis(intakeStowedAngle - intakeDeployedAngle, Vector3.right) * arm.localRotation;
+        Quaternion newWorld = arm.parent.rotation * newLocal;
+        Quaternion delta = newWorld * Quaternion.Inverse(arm.rotation);
+        Vector3 newPos = pivot + delta * (arm.position - pivot);
+
+        arm.SetPositionAndRotation(newPos, newWorld);
+        var armRb = arm.GetComponent<Rigidbody>();
+        if (armRb != null)
+        {
+            armRb.position = newPos;
+            armRb.rotation = newWorld;
+            armRb.velocity = Vector3.zero;
+            armRb.angularVelocity = Vector3.zero;
+        }
+        Physics.SyncTransforms();
+        if (debugShooting) Debug.Log($"[Breakaway] intake spawned stowed: arm turned {intakeStowedAngle - intakeDeployedAngle:F0} deg from the CAD pose");
     }
 
     private static PhysicMaterial Frictionless(string name) => new PhysicMaterial(name)
@@ -427,6 +515,213 @@ public class Breakaway : RebuiltTurretRobot
                 _hopperLocked = true;
             }
         }
+        UpdatePivotPlates();
+        UpdateBumperGuide();
+    }
+
+    // GenericJoint.GetAngle() wraps to 0..360 (stowed -120 reads 240): bring it into -180..180 around 0 so
+    // intakeStowedAngle / intakeDeployedAngle comparisons work
+    private float ArmAngle() => Mathf.DeltaAngle(0f, (float)intakeJoint.GetAngle());
+
+    // ---- bumper guide: starts swung back, the bumper pushes it into place on the first deploy, then it stays
+    private static Vector3 RendererCentre(Transform t)
+    {
+        var r = t.GetComponentInChildren<Renderer>(true);
+        if (r != null) return r.bounds.center;
+        var c = t.GetComponentInChildren<Collider>(true);
+        return c != null ? c.bounds.center : t.position;
+    }
+
+    // one name: that object's position, hinge parallel to the arm's pivot; two names: the line through both centres
+    private static bool FindGuidePivot(Transform[] all, string[] pivotNames, Vector3 armAxis, out Vector3 pivot,
+        out Vector3 axis)
+    {
+        pivot = Vector3.zero;
+        axis = armAxis.normalized;
+        if (pivotNames == null || pivotNames.Length == 0) return false;
+        Transform pa = System.Array.Find(all, t => t.name == pivotNames[0]);
+        if (pa == null) return false;
+        Transform pb = pivotNames.Length > 1 ? System.Array.Find(all, t => t.name == pivotNames[1]) : null;
+        if (pivotNames.Length > 1 && pb == null) return false;
+        if (pb == null)
+        {
+            // an empty marks the hinge by its position; a part marks it by its mesh centre
+            pivot = pa.GetComponentInChildren<Renderer>(true) != null ? RendererCentre(pa) : pa.position;
+            return true;
+        }
+        Vector3 a = RendererCentre(pa), b = RendererCentre(pb);
+        pivot = (a + b) * 0.5f;
+        if ((b - a).sqrMagnitude > 1e-8f) axis = (b - a).normalized;
+        return true;
+    }
+
+    private void FindBumperGuide()
+    {
+        _guideParts.Clear();
+        _guideLatched = false;
+        _guideBack = 1f;
+        if (intakeJoint == null || bumperGuideNames == null || bumperGuideNames.Length == 0)
+        {
+            Debug.LogWarning("[Breakaway] bumper guide: no intake joint or no part names set");
+            return;
+        }
+        Transform arm = intakeJoint.transform;
+        var all = arm.GetComponentsInChildren<Transform>(true);
+        // the arm turns about its parent's X axis (see StowIntakeAtSpawn); the guide's hinge is parallel to it
+        Vector3 armAxis = arm.parent != null ? arm.parent.TransformDirection(Vector3.right) : arm.right;
+        if (!FindGuidePivot(all, bumperGuidePivotNames, armAxis, out Vector3 pivot, out Vector3 axis))
+        {
+            var fallback = new[] { "IN-36 Spacer.002", "IN-36 Spacer.003" };
+            Debug.LogWarning($"[Breakaway] bumper guide pivot '{string.Join("', '", bumperGuidePivotNames ?? new string[0])}' " +
+                             "not found under the intake arm: using the IN-36 Spacer.002 / .003 bolts");
+            if (!FindGuidePivot(all, fallback, armAxis, out pivot, out axis))
+            {
+                Debug.LogWarning("[Breakaway] bumper guide: no pivot found, guide left in its CAD pose");
+                return;
+            }
+        }
+
+        var names = new HashSet<string>();
+        foreach (var n in bumperGuideNames) { names.Add(n); names.Add("collider-complex-" + n); }
+        var parts = System.Array.FindAll(all, t => names.Contains(t.name));
+        if (parts.Length == 0)
+        {
+            Debug.LogWarning("[Breakaway] bumper guide: none of the part names were found under the intake arm");
+            return;
+        }
+
+        // "back" = the guide's bottom swings toward the robot's centre of mass (inside the frame)
+        Vector3 bottom = Vector3.zero;
+        foreach (var t in parts) bottom += RendererCentre(t);
+        bottom /= parts.Length;
+        Vector3 inward = (rb != null ? rb.worldCenterOfMass : transform.position) - pivot;
+        inward -= Vector3.Dot(inward, transform.up) * transform.up;   // horizontal
+        Vector3 moved = Quaternion.AngleAxis(5f, axis) * (bottom - pivot) - (bottom - pivot);
+        if (Vector3.Dot(moved, inward) < 0f) axis = -axis;
+
+        foreach (var t in parts)
+        {
+            _guideParts.Add(new GuidePart
+            {
+                t = t, cadPos = t.localPosition, cadRot = t.localRotation,
+                pivot = t.parent.InverseTransformPoint(pivot),
+                axis = t.parent.InverseTransformDirection(axis).normalized
+            });
+        }
+        if (debugShooting) Debug.Log($"[Breakaway] bumper guide parts found: {_guideParts.Count} (incl. colliders)");
+        ApplyBumperGuide();
+    }
+
+    private void UpdateBumperGuide()
+    {
+        if (_guideLatched || _guideParts.Count == 0) return;
+        // held back until the first deploy; then the bumper pushes it as the arm comes down, and it never swings back
+        if (_platesPushed || _intakeDeployed)
+        {
+            float s = Mathf.Sign(intakeDeployedAngle - intakeStowedAngle);
+            float fromDeployed = Mathf.Max(0f, s * Mathf.DeltaAngle(ArmAngle(), intakeDeployedAngle));
+            float push = bumperGuidePushRange > 0f ? Mathf.Clamp01(fromDeployed / bumperGuidePushRange) : 0f;
+            float target = Mathf.Min(_guideBack, push);
+            if (bumperGuidePushSpeed > 0f && Mathf.Abs(bumperGuideStartAngle) > 0.01f)
+            {
+                // the bumper can only push it so fast: limit the swing per frame
+                float maxStep = bumperGuidePushSpeed * Time.deltaTime / Mathf.Abs(bumperGuideStartAngle);
+                target = Mathf.Max(target, _guideBack - maxStep);
+            }
+            _guideBack = target;
+            if (_guideBack <= 0.01f)
+            {
+                _guideBack = 0f;
+                _guideLatched = true;
+            }
+        }
+        ApplyBumperGuide();
+    }
+
+    private void ApplyBumperGuide()
+    {
+        float angle = bumperGuideStartAngle * _guideBack; // any sign: the start angle sets the direction
+        foreach (var g in _guideParts)
+        {
+            if (Mathf.Approximately(angle, 0f))
+            {
+                g.t.localPosition = g.cadPos;
+                g.t.localRotation = g.cadRot;
+                continue;
+            }
+            Quaternion q = Quaternion.AngleAxis(angle, g.axis);
+            g.t.localPosition = g.pivot + q * (g.cadPos - g.pivot);
+            g.t.localRotation = q * g.cadRot;
+        }
+    }
+
+    // ---- intake pivot plates: ride up with the arm until the first deploy, then ratchet down with it and lock
+    private void FindPivotPlates()
+    {
+        _pivotPlates.Clear();
+        _platesPushed = false;
+        _platesLatched = false;
+        if (intakeJoint == null || pivotPlateNames == null) return;
+        Transform arm = intakeJoint.transform;
+        var names = new HashSet<string>(pivotPlateNames);
+        foreach (var t in GetComponentsInChildren<Transform>(true))
+        {
+            if (!names.Contains(t.name) || t.parent == null || t.IsChildOf(arm)) continue;
+            // the prefab holds the arm in its CAD (deployed) pose, so this is the plate's pose in the arm frame
+            Matrix4x4 armInParent = t.parent.worldToLocalMatrix * arm.localToWorldMatrix;
+            _pivotPlates.Add(new PivotPlate
+            {
+                t = t, cadPos = t.localPosition, cadRot = t.localRotation,
+                inArm = armInParent.inverse * Matrix4x4.TRS(t.localPosition, t.localRotation, Vector3.one)
+            });
+        }
+        if (debugShooting) Debug.Log($"[Breakaway] intake pivot plates found: {_pivotPlates.Count}/{pivotPlateNames.Length}");
+    }
+
+    private void UpdatePivotPlates()
+    {
+        if (_platesLatched || _pivotPlates.Count == 0) return;
+        Transform arm = intakeJoint.transform;
+        Transform parent = _pivotPlates[0].t.parent;
+        Matrix4x4 armNow = parent.worldToLocalMatrix * arm.localToWorldMatrix;
+        float angle = ArmAngle();
+        float s = Mathf.Sign(intakeDeployedAngle - intakeStowedAngle); // +1 when "deployed" is the larger angle
+
+        if (!_platesPushed)
+        {
+            // before the first deploy the plates rest on the arm: up inside the frame while it is stowed
+            _platesArmPose = armNow;
+            if (_intakeDeployed)
+            {
+                _platesPushed = true;
+                _platesBestAngle = angle;
+            }
+        }
+        else if (s * angle > s * _platesBestAngle)
+        {
+            // the arm is pushing them further down; they never come back up
+            _platesBestAngle = angle;
+            _platesArmPose = armNow;
+        }
+
+        if (_platesPushed && s * (intakeDeployedAngle - _platesBestAngle) <= pivotPlateLatchTolerance)
+        {
+            foreach (var p in _pivotPlates)
+            {
+                p.t.localPosition = p.cadPos;
+                p.t.localRotation = p.cadRot;
+            }
+            _platesLatched = true;
+            return;
+        }
+
+        foreach (var p in _pivotPlates)
+        {
+            if (p.t.parent != parent) continue; // all four share "Intake / Model"
+            Matrix4x4 m = _platesArmPose * p.inArm;
+            p.t.localPosition = m.GetPosition();
+            p.t.localRotation = m.rotation;
+        }
     }
 
     // Shoot on the move: a ball leaves with the chassis velocity added, so it is aimed as if fired from where the
@@ -597,7 +892,7 @@ public class Breakaway : RebuiltTurretRobot
         Vector3 target = turret.GetCurrentTarget();
         float dist = Vector3.Distance(new Vector3(target.x, 0f, target.z),
                                       new Vector3(turret.transform.position.x, 0f, turret.transform.position.z));
-        Debug.Log($"[Breakaway] intake={(bool)IntakeAction} deployed={_intakeDeployed} arm={(float)intakeJoint.GetAngle():F0}/{_intakeTarget:F0} " +
+        Debug.Log($"[Breakaway] intake={(bool)IntakeAction} deployed={_intakeDeployed} arm={ArmAngle():F0}/{_intakeTarget:F0} guide={bumperGuideStartAngle * _guideBack:F0} " +
                   $"hopperOut={_hopperOut} locked={_hopperLocked} hopperPos={hopperIn:F1}in/{hopperExtendedDistance:F1} | " +
                   $"outtake={(bool)OuttakeAction} manual={(bool)ManualShoot} pass={(bool)AutoPass} passing={_passing} " +
                   $"agitating={_agitating} nearTrench={NearTrench()} turretErr={err:F1} aligned={Aligned()} dist={dist:F2}m | " +

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Games.Rebuilt.Components;
 using Games.Rebuilt.Robots;
 using MoSimCore.BaseClasses.GameManagement;
@@ -41,6 +42,17 @@ public class BombSquad : RebuiltRobotBase
     [Header("Hood")]
     [SerializeField] private float hoodMaxAngle = 30f;          // |angle| limit either side of the CAD pose
     [SerializeField] private float manualHoodAngle = -10f;
+    // fake solid backer behind the three hood rods (see AddHoodBacker)
+    [SerializeField] private bool addHoodBacker = true;
+    [SerializeField] private float hoodBackerThickness = 0.006f;  // m
+    [SerializeField] private float hoodBackerInset = 0f;          // m the backer moves in toward the flywheel (0 = just behind the rods)
+
+    [Header("Shot Trims")]
+    // Interpolation Adjustment trims (docs: Scripting > Snippets): applied on top of the map values while shooting
+    // from the maps (not to the manual shot), so a whole map can be nudged without re-entering every point.
+    [SerializeField, Min(0f)] private float flywheelScale = 1f;   // multiplies the map rpm
+    [SerializeField] private float flywheelOffsetRpm = 0f;        // added after the scale
+    [SerializeField] private float hoodOffsetDegrees = 0f;        // added to the map hood angle (still clamped to hoodMaxAngle)
 
     [Header("Intake")]
     // angles are measured from the prefab pose (0)
@@ -100,6 +112,7 @@ public class BombSquad : RebuiltRobotBase
         _rb = GetComponent<Rigidbody>();
         _intakeCfg = intakeJoint ? intakeJoint.GetComponent<ConfigurableJoint>() : null;
         _intakeEntranceBlocker = intakeJoint ? intakeJoint.transform.Find("IntakeEntranceBlocker")?.GetComponent<BoxCollider>() : null;
+        AddHoodBacker();   // before collecting the robot's colliders, so the backer gets the same self-collision ignores
         _robotColliders = GetComponentsInChildren<Collider>(true);
 
         _intakeDeployed = false;
@@ -109,6 +122,69 @@ public class BombSquad : RebuiltRobotBase
         Scheduler.AddSubsystems(Intake, Hopper, HandleAutoAim, Shooter);
         Scheduler.AddProtectedSystem(UpdateJoints);
         Scheduler.AddLateRecursive(UpdatePids);
+    }
+
+    // Fake solid backer: the hood is three rods with gaps between them. Invisible box colliders bridge each pair of
+    // neighbouring rods on the outside of the arc (away from the flywheel), so the hood acts like a solid plate behind
+    // the rods. Built from the rods' capsule colliders and the hood's pivot (the flywheel axle), on the hood body.
+    private void AddHoodBacker()
+    {
+        if (!addHoodBacker || hoodJoint == null) return;
+        Transform hood = hoodJoint.transform;
+        var cj = hood.GetComponent<ConfigurableJoint>();
+        Vector3 pivot = cj != null ? cj.anchor : Vector3.zero;   // hood-local flywheel axle
+
+        // rods: capsules on the hood that lie along the hood's X axis (the axle direction)
+        var rods = new List<(Vector3 c, float r, float len, CapsuleCollider col)>();
+        foreach (var cap in hood.GetComponentsInChildren<CapsuleCollider>(true))
+        {
+            if (cap.isTrigger) continue;
+            Vector3 dir = cap.direction == 0 ? Vector3.right : cap.direction == 1 ? Vector3.up : Vector3.forward;
+            Vector3 axis = hood.InverseTransformDirection(cap.transform.TransformDirection(dir)).normalized;
+            if (Mathf.Abs(axis.x) < 0.95f) continue;
+            Vector3 s = cap.transform.lossyScale;
+            float radius = cap.radius * Mathf.Max(Mathf.Abs(s.x), Mathf.Abs(s.y), Mathf.Abs(s.z));
+            float len = cap.height * Mathf.Abs(Vector3.Dot(s, new Vector3(Mathf.Abs(dir.x), Mathf.Abs(dir.y), Mathf.Abs(dir.z))));
+            rods.Add((hood.InverseTransformPoint(cap.transform.TransformPoint(cap.center)), radius, len, cap));
+        }
+        if (rods.Count < 2)
+        {
+            if (debugShooting) Debug.LogWarning($"[BombSquad] hood backer: found {rods.Count} rod colliders, need 2+");
+            return;
+        }
+        // order the rods round the axle
+        rods.Sort((a, b) => Mathf.Atan2(a.c.z - pivot.z, a.c.y - pivot.y)
+            .CompareTo(Mathf.Atan2(b.c.z - pivot.z, b.c.y - pivot.y)));
+
+        int made = 0;
+        for (int i = 0; i + 1 < rods.Count; i++)
+        {
+            var a = rods[i];
+            var b = rods[i + 1];
+            Vector3 chord = new Vector3(0f, b.c.y - a.c.y, b.c.z - a.c.z);
+            float chordLen = chord.magnitude;
+            if (chordLen < 1e-4f) continue;
+            Vector3 along = chord / chordLen;
+            Vector3 mid = (a.c + b.c) * 0.5f;
+            Vector3 normal = new Vector3(0f, -along.z, along.y);          // perpendicular in the YZ plane
+            Vector3 outward = new Vector3(0f, mid.y - pivot.y, mid.z - pivot.z);
+            if (Vector3.Dot(normal, outward) < 0f) normal = -normal;      // point away from the flywheel
+            float rodR = Mathf.Max(a.r, b.r);
+            float t = Mathf.Max(0.001f, hoodBackerThickness);
+            // inner face at the rods' outer surface minus the inset (0 = just behind the rods, 2 x radius = flush with their inside)
+            float innerOffset = rodR - Mathf.Clamp(hoodBackerInset, 0f, 2f * rodR);
+
+            var go = new GameObject($"Hood Backer {made + 1}");
+            go.layer = a.col.gameObject.layer;
+            go.transform.SetParent(hood, false);
+            go.transform.localPosition = mid + normal * (innerOffset + t * 0.5f);
+            go.transform.localRotation = Quaternion.LookRotation(along, normal);   // local Z = chord, local Y = outward
+            var box = go.AddComponent<BoxCollider>();
+            box.size = new Vector3(Mathf.Min(a.len, b.len), t, chordLen + 2f * rodR);   // overlaps the rods: no seam
+            box.sharedMaterial = a.col.sharedMaterial != null ? a.col.sharedMaterial : b.col.sharedMaterial;
+            made++;
+        }
+        if (debugShooting) Debug.Log($"[BombSquad] hood backer: {made} colliders across {rods.Count} rods");
     }
 
     // The robot's own colliders collide with each other and a joint only ignores its two bodies, so the intake arm
@@ -215,11 +291,13 @@ public class BombSquad : RebuiltRobotBase
             return;
         }
 
-        float rpm = ManualShoot ? manualShooterRpm : (float)flywheelInterpolation.Interpolate();
+        float rpm = ManualShoot
+            ? manualShooterRpm
+            : Mathf.Max(0f, (float)flywheelInterpolation.Interpolate() * flywheelScale + flywheelOffsetRpm);
         if (_passing && !ManualShoot) rpm *= passRpmMultiplier;
         flywheel.SetRpm(flywheelSign * rpm);
 
-        float hood = ManualShoot ? manualHoodAngle : (float)hoodInterpolation.Interpolate();
+        float hood = ManualShoot ? manualHoodAngle : (float)hoodInterpolation.Interpolate() + hoodOffsetDegrees;
         _hoodTarget = NearTrench() ? 0f : Mathf.Clamp(hood, -hoodMaxAngle, hoodMaxAngle);
 
         bool feed = Aligned();
