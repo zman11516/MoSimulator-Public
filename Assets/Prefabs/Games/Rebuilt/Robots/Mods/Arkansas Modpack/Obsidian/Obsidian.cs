@@ -60,6 +60,10 @@ public class Obsidian : RebuiltTurretRobot
     [SerializeField] private float agitateBackoffDistance = 1.5f;
     [SerializeField] private float agitateHalfPeriod = 0.4f;
     [SerializeField] private float agitateRollerDivider = 4f;
+    [Tooltip("While agitating the ramp folds on each in-stroke and drops on each out-stroke, but only while the " +
+             "intake is at least this far (intake joint units) from stowed. Closer than that the ramp would hit " +
+             "the bumper, so it stays folded. Raise it if the ramp still clips the bumper.")]
+    [SerializeField] private float agitateRampClearance = 4f;
 
     [Header("Spindexer Values")]
     [SerializeField] private float spindexerReverseRpm = -1000f;
@@ -72,7 +76,7 @@ public class Obsidian : RebuiltTurretRobot
     [SerializeField] private float turretTolerance = 5f;
     [Tooltip("Once feeding has started, keep feeding until the turret error exceeds turretTolerance times this, so " +
              "small aim wobble while driving doesn't stop the kicker and reverse the spindexer.")]
-    [SerializeField] private float feedHoldToleranceMultiplier = 3f;
+    [SerializeField] private float feedHoldToleranceMultiplier = 1.5f;
     [SerializeField] private float trenchClearDistance = 0.25f;
 
     [Header("Hood Arc")]
@@ -108,6 +112,15 @@ public class Obsidian : RebuiltTurretRobot
     [SerializeField] private float exitMinSpeed = 2.5f;      // m/s relative to the chassis: only fuel being shot
     [SerializeField] private float exitHoldTime = 0.3f;      // s a shot ball stays straightened
     [SerializeField] private float exitHoldRadius = 1.2f;    // m from the shaft: beyond this the ball is in free flight
+    [Tooltip("How far each shot's speed and launch angle are pulled toward the running average of recent shots as " +
+             "it clears the hood (0 = pure physics, 1 = every shot identical). The rigid sim ball leaves the " +
+             "flywheel and hood 5.4 to 9.6 m/s and 56 to 80 deg shot to shot, which no amount of tuning removed. " +
+             "The average is taken from the real shots, so the shot map's distances still hold; only the scatter " +
+             "around them is removed. Speed is averaged per commanded RPM, and the angle average restarts when the " +
+             "hood moves.")]
+    [SerializeField, Range(0f, 1f)] private float launchConsistency = 0.85f;
+    [Tooltip("Roughly how many recent shots the running average covers.")]
+    [SerializeField] private float launchAverageShots = 8f;
 
     [Header("Kicker Handoff Assist")]
     [Tooltip("Above the top kicker rollers each roller pushes fuel sideways toward its own side, so fuel can drift off " +
@@ -126,20 +139,59 @@ public class Obsidian : RebuiltTurretRobot
     [SerializeField] private float handoffAssistSpeed = 2.0f;
 
     [Header("Spindexer Feed Assist")]
-    [Tooltip("The spindexer wheels' interaction capsules are shorter than they are wide, so each is a sphere that " +
-             "domes up above the spindexer floor. Fuel resting near the top of a dome barely moves and never reaches " +
-             "the kicker. While feeding, slow fuel in the spindexer bowl is pushed toward the kicker entrance, like a " +
-             "floor sloped toward it.")]
+    [Tooltip("The only way from the spindexer bowl into the kicker that a whole fuel fits through is around the " +
+             "right spindexer wheel and along the back wall; the front-plate window is blocked by the middle wheel's " +
+             "dome and centre cone. Pushing stalled fuel straight at the kicker drove it into the front plate (and " +
+             "the divider), so instead a flow field is built from the robot's own colliders: every fuel-sized space " +
+             "in the bowl knows the way to the kicker around the walls, and stalled fuel is nudged along it. Only " +
+             "velocities change (with the reaction on the robot), so nothing is teleported.")]
     [SerializeField] private bool assistSpindexerFeed = true;
-    [Tooltip("Robot-local point inside the bottom of the kicker chute that fuel is pushed toward.")]
-    [SerializeField] private Vector3 kickerEntryLocal = new Vector3(-0.10f, 0.20f, -0.06f);
+    [Tooltip("Robot-local point in the kicker entrance mouth that the flow field leads to: just past the gap " +
+             "between the spindexer and the kicker rollers, where a whole fuel clears every solid collider. Fuel " +
+             "left of this (and behind centre) is in the chute and left to the kicker rollers.")]
+    [SerializeField] private Vector3 kickerEntryLocal = new Vector3(-0.06f, 0.22f, -0.075f);
+    [Tooltip("Robot-local point inside the bottom of the kicker chute. Fuel at the mouth is nudged toward it.")]
+    [SerializeField] private Vector3 kickerChuteLocal = new Vector3(-0.10f, 0.245f, -0.075f);
+    [Tooltip("Robot-local bounds of the flow field grid (min corner). Keep the top below the turret: it turns, " +
+             "so the field must not route fuel through space the turret only sometimes leaves open.")]
+    [SerializeField] private Vector3 flowFieldMin = new Vector3(-0.36f, 0.10f, -0.16f);
+    [Tooltip("Robot-local bounds of the flow field grid (max corner).")]
+    [SerializeField] private Vector3 flowFieldMax = new Vector3(0.36f, 0.30f, 0.26f);
+    [Tooltip("Flow field cell size in metres.")]
+    [SerializeField] private float flowCellSize = 0.015f;
+    [Tooltip("How far a fuel may squeeze into the robot's colliders and still count as fitting (metres). Fuel is " +
+             "soft, and the tightest gap on the way to the kicker is a few millimetres under a full fuel.")]
+    [SerializeField] private float flowSqueeze = 0.004f;
+    [Tooltip("Fuel only queues behind a fuel closer to the kicker that is within this distance and in its way, " +
+             "instead of being pushed into it. Stops two fuel being crammed into a gap that fits one.")]
+    [SerializeField] private float flowQueueSpacing = 0.16f;
+    [Tooltip("A fuel being nudged that makes no progress for this long is backed off once and tried again, the way " +
+             "a jiggle re-seats a jammed ball.")]
+    [SerializeField] private float flowUnjamTime = 0.8f;
+    [Tooltip("Minimum seconds between fuel the assist sends into the kicker mouth. Leaves a gap between fuel so the " +
+             "next one isn't pressed against the one the flywheel is grabbing, which scatters shots. 0 = no spacing.")]
+    [SerializeField] private float minFeedInterval = 0.1f;
     [Tooltip("Robot-local bounds of the spindexer bowl (min corner).")]
     [SerializeField] private Vector3 spindexerZoneMin = new Vector3(-0.30f, 0.10f, -0.13f);
     [Tooltip("Robot-local bounds of the spindexer bowl (max corner). Kept behind the Cover hump so hopper fuel is " +
              "left to the intake agitation.")]
     [SerializeField] private Vector3 spindexerZoneMax = new Vector3(0.30f, 0.45f, 0.20f);
-    [Tooltip("Speed relative to the chassis toward the kicker entrance that slow fuel in the bowl is brought up to.")]
+    [Tooltip("Speed relative to the chassis along the flow field that slow fuel in the bowl is brought up to.")]
     [SerializeField] private float spindexerAssistSpeed = 1.2f;
+
+    [Header("Hopper Divider")]
+    [Tooltip("Collider down the middle of the hopper that stops fuel hopping over and jamming other fuel. It helps " +
+             "when the hopper is full but gets in the way when only a few fuel are left, so it is switched off then.")]
+    [SerializeField] private Collider hopperDivider;
+    [Tooltip("Switch the divider off when fewer than this many fuel are in the hopper.")]
+    [SerializeField] private int dividerOffBelow = 8;
+    [Tooltip("Switch the divider back on once at least this many fuel are in the hopper (higher than the off count " +
+             "so it doesn't flicker). Fuel already straddling it passes through until clear instead of being launched.")]
+    [SerializeField] private int dividerOnAtOrAbove = 12;
+    [Tooltip("Robot-local bounds that count as inside the hopper (min corner).")]
+    [SerializeField] private Vector3 hopperZoneMin = new Vector3(-0.40f, 0.05f, -0.20f);
+    [Tooltip("Robot-local bounds that count as inside the hopper (max corner).")]
+    [SerializeField] private Vector3 hopperZoneMax = new Vector3(0.40f, 0.60f, 0.50f);
 
     [Header("Debug")]
     [Tooltip("While shooting, log feeder state and every fuel that has sat still inside the robot for over a second, " +
@@ -191,6 +243,17 @@ public class Obsidian : RebuiltTurretRobot
     private bool _feeding;
     private readonly Queue<float> _shotTimes = new Queue<float>();
     private readonly Collider[] _jamHits = new Collider[16];
+    private readonly HashSet<Rigidbody> _shotMeasured = new HashSet<Rigidbody>();
+    private readonly List<float> _shotSpeeds = new List<float>();
+    private readonly List<float> _shotElevations = new List<float>();
+    private readonly List<float> _shotTurretErr = new List<float>();
+
+    private static string Range(List<float> v, string fmt)
+    {
+        float min = float.MaxValue, max = float.MinValue, sum = 0f;
+        foreach (float x in v) { min = Mathf.Min(min, x); max = Mathf.Max(max, x); sum += x; }
+        return $"{min.ToString(fmt)}..{max.ToString(fmt)} (avg {(sum / v.Count).ToString(fmt)})";
+    }
 
     private bool ShootHeld => OuttakeAction || ManualShoot || AutoPass;
     private bool NearTrench() => turret != null && UnderTrench(turret.transform, trenchClearDistance);
@@ -263,6 +326,90 @@ public class Obsidian : RebuiltTurretRobot
         StraightenExitingFuel();
         AssistKickerHandoff();
         AssistSpindexerFeed();
+        UpdateHopperDivider();
+    }
+
+    private int _hopperFuel;
+    private float _nextDividerCheck;
+    private readonly Collider[] _dividerHits = new Collider[32];
+    private readonly HashSet<Collider> _dividerPassing = new HashSet<Collider>();
+    private readonly HashSet<Collider> _dividerOverlapNow = new HashSet<Collider>();
+    private readonly List<Collider> _dividerCleared = new List<Collider>();
+
+    private void UpdateHopperDivider()
+    {
+        if (hopperDivider == null || Time.time < _nextDividerCheck) return;
+        _nextDividerCheck = Time.time + 0.1f;
+        ScanFuel();
+
+        int count = 0;
+        foreach (var body in _fuelBodies)
+        {
+            if (body == null) continue;
+            Vector3 lp = transform.InverseTransformPoint(body.position);
+            if (lp.x < hopperZoneMin.x || lp.y < hopperZoneMin.y || lp.z < hopperZoneMin.z ||
+                lp.x > hopperZoneMax.x || lp.y > hopperZoneMax.y || lp.z > hopperZoneMax.z) continue;
+            count++;
+        }
+        _hopperFuel = count;
+
+        // An empty hopper (match start, or between loads) says nothing about how full it is about to get, so the
+        // divider keeps whatever state it had.
+        if (count == 0) return;
+
+        if (hopperDivider.enabled)
+        {
+            if (count < dividerOffBelow)
+            {
+                hopperDivider.enabled = false;  // also drops every IgnoreCollision pair with it
+                _dividerPassing.Clear();
+                return;
+            }
+            ReleaseClearedDividerFuel();
+        }
+        else if (count >= dividerOnAtOrAbove)
+        {
+            // Fuel already straddling the divider would be launched if it collided the moment the divider appears,
+            // so each of those passes through it until it has moved clear, then collides like the rest.
+            hopperDivider.enabled = true;
+            CollectDividerOverlaps();
+            foreach (var c in _dividerOverlapNow)
+            {
+                Physics.IgnoreCollision(hopperDivider, c, true);
+                _dividerPassing.Add(c);
+            }
+        }
+    }
+
+    private void ReleaseClearedDividerFuel()
+    {
+        if (_dividerPassing.Count == 0) return;
+        CollectDividerOverlaps();
+        _dividerCleared.Clear();
+        foreach (var c in _dividerPassing)
+            if (c == null || !_dividerOverlapNow.Contains(c)) _dividerCleared.Add(c);
+        foreach (var c in _dividerCleared)
+        {
+            if (c != null) Physics.IgnoreCollision(hopperDivider, c, false);
+            _dividerPassing.Remove(c);
+        }
+    }
+
+    private void CollectDividerOverlaps()
+    {
+        _dividerOverlapNow.Clear();
+        if (!(hopperDivider is BoxCollider box)) return;
+        Transform t = box.transform;
+        Vector3 scale = t.lossyScale;
+        Vector3 half = Vector3.Scale(box.size, new Vector3(Mathf.Abs(scale.x), Mathf.Abs(scale.y), Mathf.Abs(scale.z))) * 0.5f;
+        int n = Physics.OverlapBoxNonAlloc(t.TransformPoint(box.center), half, _dividerHits, t.rotation, ~0,
+            QueryTriggerInteraction.Ignore);
+        for (int i = 0; i < n; i++)
+        {
+            Collider c = _dividerHits[i];
+            if (c != hopperDivider && c.GetComponentInParent<Games.Rebuilt.GamePieceSystem.RebuiltGamePieceController>() != null)
+                _dividerOverlapNow.Add(c);
+        }
     }
 
     private void AssistSpindexerFeed()
@@ -270,28 +417,301 @@ public class Obsidian : RebuiltTurretRobot
         if (!assistSpindexerFeed || !_feeding || rb == null) return;
         ScanFuel();
 
-        Vector3 entry = transform.TransformPoint(kickerEntryLocal);
-        Vector3 chassisVel = rb.GetPointVelocity(entry);
+        if (!_flowBuilt) BuildFlowFields();
+        float[] dist = hopperDivider != null && hopperDivider.enabled && _flowDistDividerOn != null
+            ? _flowDistDividerOn : _flowDistDividerOff;
+        if (dist == null) return;
 
+        Vector3 chassisVel = rb.GetPointVelocity(transform.TransformPoint(kickerEntryLocal));
+        float cell = flowCellSize;
+
+        _flowFuel.Clear();
+        _flowInZone.Clear();
         foreach (var body in _fuelBodies)
         {
             if (body == null || body.isKinematic || _exitHold.ContainsKey(body)) continue;
             Vector3 lp = transform.InverseTransformPoint(body.position);
             if (lp.x < spindexerZoneMin.x || lp.y < spindexerZoneMin.y || lp.z < spindexerZoneMin.z ||
                 lp.x > spindexerZoneMax.x || lp.y > spindexerZoneMax.y || lp.z > spindexerZoneMax.z) continue;
-            // Already in the kicker chute (left of centre, behind the front plate): the kicker rollers have it.
-            if (lp.x < 0f && lp.z < 0f) continue;
+            // Already past the entrance mouth into the kicker chute: the kicker rollers have it.
+            if (lp.x < kickerEntryLocal.x && lp.z < 0f) continue;
+            // Above the field is the kicker top, turret and flywheel: the field knows nothing there, and a nudge
+            // on fuel the flywheel is about to take sends the shot off line.
+            if (lp.y > flowFieldMax.y) continue;
+            int c = FlowLookup(lp, dist);
+            if (c < 0) continue;
+            _flowFuel.Add((body, lp, dist[c], c));
+            _flowInZone.Add(body);
+        }
 
+        _flowStale.Clear();
+        foreach (var b in _flowProgress.Keys) if (b == null || !_flowInZone.Contains(b)) _flowStale.Add(b);
+        foreach (var b in _flowStale) _flowProgress.Remove(b);
+
+        // The fuel being fed into the mouth has gone on into the chute (or away): start the spacing gap.
+        if (_mouthBody != null && !_flowInZone.Contains(_mouthBody)) { _mouthBody = null; _lastMouthEntry = Time.time; }
+        // It was knocked back out of the mouth: let another fuel have the turn.
+        foreach (var f in _flowFuel)
+            if (f.body == _mouthBody && f.dist > 4f * cell) { _mouthBody = null; break; }
+
+        foreach (var f in _flowFuel)
+        {
+            Rigidbody body = f.body;
             Vector3 rel = body.velocity - chassisVel;
-            if (rel.magnitude > handoffStallSpeed) continue;
-            Vector3 toEntry = entry - body.position;
-            if (toEntry.sqrMagnitude < 1e-6f) continue;
-            Vector3 dir = toEntry.normalized;
+            if (rel.magnitude > handoffStallSpeed) { _flowProgress.Remove(body); continue; }
+
+            Vector3 dirLocal;
+            if (f.dist <= 2f * cell || (f.local - kickerEntryLocal).sqrMagnitude < 4f * cell * cell)
+            {
+                // One fuel at a time into the mouth, with a gap after the last one went in.
+                if (_mouthBody != body)
+                {
+                    if (_mouthBody != null || Time.time - _lastMouthEntry < minFeedInterval) continue;
+                    _mouthBody = body;
+                }
+                dirLocal = kickerChuteLocal - f.local;
+            }
+            else
+                dirLocal = FlowTarget(f.cell, dist) - f.local;
+            if (dirLocal.sqrMagnitude < 1e-8f) continue;
+            dirLocal.Normalize();
+
+            // Queue behind a fuel that is nearer the kicker and in the way, rather than cramming into it.
+            bool queued = false;
+            foreach (var o in _flowFuel)
+            {
+                if (o.body == body || o.dist >= f.dist - cell) continue;
+                Vector3 d = o.local - f.local;
+                if (d.sqrMagnitude > flowQueueSpacing * flowQueueSpacing) continue;
+                if (Vector3.Dot(d, dirLocal) > 0f) { queued = true; break; }
+            }
+            if (queued) { _flowProgress.Remove(body); continue; }
+
+            Vector3 dir = transform.TransformDirection(dirLocal);
+
+            // No progress along the field for a while: back off once (up and away) and come at it again.
+            if (!_flowProgress.TryGetValue(body, out var pr))
+            {
+                pr = (Time.time, f.dist);
+                _flowProgress[body] = pr;
+            }
+            else if (f.dist < pr.dist - cell)
+            {
+                pr = (Time.time, f.dist);
+                _flowProgress[body] = pr;
+            }
+            else if (Time.time - pr.since > flowUnjamTime)
+            {
+                PushFuel(body, chassisVel - dir * 0.6f + transform.up * 0.8f);
+                _flowProgress[body] = (Time.time + 0.3f, f.dist);  // let it back off before nudging again
+                continue;
+            }
+            if (pr.since > Time.time) continue;
+
             float progress = Vector3.Dot(rel, dir);
             if (progress >= spindexerAssistSpeed * 0.6f) continue;
             Vector3 side = rel - dir * progress;
             PushFuel(body, chassisVel + side * 0.5f + dir * spindexerAssistSpeed);
         }
+    }
+
+    // ---- Flow field: robot-local grid of fuel-sized spaces, each holding its path length to the kicker mouth ----
+
+    private float[] _flowDistDividerOff, _flowDistDividerOn;
+    private int _fnx, _fny, _fnz;
+    private bool _flowBuilt;
+    private readonly Collider[] _flowHits = new Collider[32];
+    private readonly Dictionary<Rigidbody, (float since, float dist)> _flowProgress = new Dictionary<Rigidbody, (float since, float dist)>();
+    private readonly List<(Rigidbody body, Vector3 local, float dist, int cell)> _flowFuel = new List<(Rigidbody body, Vector3 local, float dist, int cell)>();
+    private readonly HashSet<Rigidbody> _flowInZone = new HashSet<Rigidbody>();
+    private readonly List<Rigidbody> _flowStale = new List<Rigidbody>();
+    private Rigidbody _mouthBody;
+    private float _lastMouthEntry = -10f;
+
+    private int FlowIndex(int x, int y, int z) => (x * _fny + y) * _fnz + z;
+    private Vector3 FlowCenter(int x, int y, int z) => flowFieldMin + new Vector3(x, y, z) * flowCellSize;
+    private void FlowCoords(int i, out int x, out int y, out int z) { z = i % _fnz; y = (i / _fnz) % _fny; x = i / (_fnz * _fny); }
+
+    // Built once, the first time fuel needs feeding, from whatever colliders the robot has then, with the divider
+    // both off and on so switching it never needs a rebuild.
+    private void BuildFlowFields()
+    {
+        _flowBuilt = true;
+        if (flowCellSize <= 0.001f) return;
+        _fnx = Mathf.FloorToInt((flowFieldMax.x - flowFieldMin.x) / flowCellSize) + 1;
+        _fny = Mathf.FloorToInt((flowFieldMax.y - flowFieldMin.y) / flowCellSize) + 1;
+        _fnz = Mathf.FloorToInt((flowFieldMax.z - flowFieldMin.z) / flowCellSize) + 1;
+        if (_fnx < 2 || _fny < 2 || _fnz < 2) return;
+
+        if (hopperDivider == null)
+        {
+            Physics.SyncTransforms();
+            _flowDistDividerOff = BuildFlowDistances(out int freeOff, out int reachOff);
+            if (debugJams) Debug.Log($"[Obsidian] Flow field: {freeOff} fuel-sized cells, {reachOff} lead to the kicker.");
+            return;
+        }
+
+        bool was = hopperDivider.enabled;
+        hopperDivider.enabled = false;
+        Physics.SyncTransforms();
+        _flowDistDividerOff = BuildFlowDistances(out int free0, out int reach0);
+        hopperDivider.enabled = true;
+        Physics.SyncTransforms();
+        _flowDistDividerOn = BuildFlowDistances(out int free1, out int reach1);
+        hopperDivider.enabled = was;
+        // Toggling the divider dropped its IgnoreCollision pairs; restore them for fuel still passing through it.
+        if (was) foreach (var c in _dividerPassing) if (c != null) Physics.IgnoreCollision(hopperDivider, c, true);
+        if (debugJams)
+            Debug.Log($"[Obsidian] Flow field: divider off {free0} fuel-sized cells, {reach0} lead to the kicker; " +
+                      $"divider on {free1} cells, {reach1} lead to the kicker.");
+    }
+
+    private float[] BuildFlowDistances(out int freeCount, out int reachCount)
+    {
+        int n = _fnx * _fny * _fnz;
+        var free = new bool[n];
+        var dist = new float[n];
+        float probe = Mathf.Max(0.01f, fuelRadius - flowSqueeze);
+        freeCount = 0;
+        reachCount = 0;
+
+        for (int x = 0; x < _fnx; x++)
+        for (int y = 0; y < _fny; y++)
+        for (int z = 0; z < _fnz; z++)
+        {
+            int i = FlowIndex(x, y, z);
+            dist[i] = float.PositiveInfinity;
+            int hits = Physics.OverlapSphereNonAlloc(transform.TransformPoint(FlowCenter(x, y, z)), probe, _flowHits, ~0,
+                QueryTriggerInteraction.Ignore);
+            bool open = true;
+            for (int h = 0; h < hits && open; h++)
+                if (_flowHits[h].GetComponentInParent<Games.Rebuilt.GamePieceSystem.RebuiltGamePieceController>() == null)
+                    open = false;
+            free[i] = open;
+            if (open) freeCount++;
+        }
+
+        // Start from the open cell nearest the kicker mouth.
+        int start = -1;
+        float best = float.PositiveInfinity;
+        for (int i = 0; i < n; i++)
+        {
+            if (!free[i]) continue;
+            FlowCoords(i, out int x, out int y, out int z);
+            float d = (FlowCenter(x, y, z) - kickerEntryLocal).sqrMagnitude;
+            if (d < best) { best = d; start = i; }
+        }
+        if (start < 0 || best > 0.05f * 0.05f) return dist;
+
+        // Dijkstra over the 26 neighbours.
+        var heap = new List<(float d, int i)>();
+        dist[start] = 0f;
+        HeapPush(heap, (0f, start));
+        while (heap.Count > 0)
+        {
+            var (d, i) = HeapPop(heap);
+            if (d > dist[i]) continue;
+            reachCount++;
+            FlowCoords(i, out int x, out int y, out int z);
+            for (int dx = -1; dx <= 1; dx++)
+            for (int dy = -1; dy <= 1; dy++)
+            for (int dz = -1; dz <= 1; dz++)
+            {
+                if (dx == 0 && dy == 0 && dz == 0) continue;
+                int ax = x + dx, ay = y + dy, az = z + dz;
+                if (ax < 0 || ay < 0 || az < 0 || ax >= _fnx || ay >= _fny || az >= _fnz) continue;
+                int j = FlowIndex(ax, ay, az);
+                if (!free[j]) continue;
+                float nd = d + flowCellSize * Mathf.Sqrt(dx * dx + dy * dy + dz * dz);
+                if (nd < dist[j]) { dist[j] = nd; HeapPush(heap, (nd, j)); }
+            }
+        }
+        return dist;
+    }
+
+    // The reachable cell a fuel at this local point is in, or the nearest one around it (a fuel resting against a
+    // wall can sit a little inside a blocked cell). -1 when there is none nearby.
+    private int FlowLookup(Vector3 local, float[] dist)
+    {
+        Vector3 g = (local - flowFieldMin) / flowCellSize;
+        int cx = Mathf.Clamp(Mathf.RoundToInt(g.x), 0, _fnx - 1);
+        int cy = Mathf.Clamp(Mathf.RoundToInt(g.y), 0, _fny - 1);
+        int cz = Mathf.Clamp(Mathf.RoundToInt(g.z), 0, _fnz - 1);
+        int c = FlowIndex(cx, cy, cz);
+        if (!float.IsInfinity(dist[c])) return c;
+
+        int bestCell = -1;
+        float bestD = float.PositiveInfinity;
+        for (int r = 1; r <= 3 && bestCell < 0; r++)
+        for (int dx = -r; dx <= r; dx++)
+        for (int dy = -r; dy <= r; dy++)
+        for (int dz = -r; dz <= r; dz++)
+        {
+            int ax = cx + dx, ay = cy + dy, az = cz + dz;
+            if (ax < 0 || ay < 0 || az < 0 || ax >= _fnx || ay >= _fny || az >= _fnz) continue;
+            int j = FlowIndex(ax, ay, az);
+            if (float.IsInfinity(dist[j])) continue;
+            float d = dx * dx + dy * dy + dz * dz;
+            if (d < bestD) { bestD = d; bestCell = j; }
+        }
+        return bestCell;
+    }
+
+    // Two steps down the field from this cell, so the direction follows the path round corners smoothly.
+    private Vector3 FlowTarget(int cell, float[] dist)
+    {
+        int c = cell;
+        for (int step = 0; step < 2; step++)
+        {
+            FlowCoords(c, out int x, out int y, out int z);
+            int next = c;
+            float bestD = dist[c];
+            for (int dx = -1; dx <= 1; dx++)
+            for (int dy = -1; dy <= 1; dy++)
+            for (int dz = -1; dz <= 1; dz++)
+            {
+                int ax = x + dx, ay = y + dy, az = z + dz;
+                if (ax < 0 || ay < 0 || az < 0 || ax >= _fnx || ay >= _fny || az >= _fnz) continue;
+                int j = FlowIndex(ax, ay, az);
+                if (dist[j] < bestD) { bestD = dist[j]; next = j; }
+            }
+            if (next == c) break;
+            c = next;
+        }
+        FlowCoords(c, out int tx, out int ty, out int tz);
+        return FlowCenter(tx, ty, tz);
+    }
+
+    private static void HeapPush(List<(float d, int i)> h, (float d, int i) item)
+    {
+        h.Add(item);
+        int k = h.Count - 1;
+        while (k > 0)
+        {
+            int p = (k - 1) / 2;
+            if (h[p].d <= h[k].d) break;
+            (h[p], h[k]) = (h[k], h[p]);
+            k = p;
+        }
+    }
+
+    private static (float d, int i) HeapPop(List<(float d, int i)> h)
+    {
+        var top = h[0];
+        int last = h.Count - 1;
+        h[0] = h[last];
+        h.RemoveAt(last);
+        int k = 0;
+        while (true)
+        {
+            int l = 2 * k + 1, r = l + 1, m = k;
+            if (l < h.Count && h[l].d < h[m].d) m = l;
+            if (r < h.Count && h[r].d < h[m].d) m = r;
+            if (m == k) break;
+            (h[m], h[k]) = (h[k], h[m]);
+            k = m;
+        }
+        return top;
     }
 
     // Change a fuel's velocity and give the robot the equal and opposite impulse. Without the reaction the assists
@@ -384,11 +804,62 @@ public class Obsidian : RebuiltTurretRobot
             if (body.isKinematic) continue;
             Vector3 rel = body.velocity - chassisVel;
             float side = Vector3.Dot(rel, axis);
-            if (Mathf.Abs(side) < 1e-4f) continue;
-            body.velocity = chassisVel + rel - axis * side;
+            if (Mathf.Abs(side) >= 1e-4f)
+            {
+                rel -= axis * side;
+                body.velocity = chassisVel + rel;
+            }
+            // Launch conditions, taken once the fuel has cleared the hood: what decides where the shot lands.
+            if (!_shotMeasured.Contains(body) && (body.position - shaft).sqrMagnitude > zone2)
+            {
+                _shotMeasured.Add(body);
+                float speed = rel.magnitude;
+                float elev = speed > 1e-3f ? Mathf.Asin(Mathf.Clamp(Vector3.Dot(rel / speed, transform.up), -1f, 1f)) * Mathf.Rad2Deg : 0f;
+                if (debugJams)
+                {
+                    _shotSpeeds.Add(speed);
+                    _shotElevations.Add(elev);
+                    if (turret != null) _shotTurretErr.Add(turret.GetError());
+                }
+                NormalizeLaunch(body, chassisVel, rel, speed, elev);
+            }
         }
-        foreach (var body in _exitExpired) _exitHold.Remove(body);
+        foreach (var body in _exitExpired) { _exitHold.Remove(body); _shotMeasured.Remove(body); }
         if (debugJams) ReportJams(chassisVel);
+    }
+
+    private float _commandedRpm;
+    private float _avgSpeedPerRpm, _avgElev, _avgElevHood;
+    private int _avgSpeedCount, _avgElevCount;
+
+    // Pull this shot's speed and launch angle part way toward the running average of real shots, then fold the
+    // shot's own (uncorrected) values into that average so it keeps following what the shooter actually does.
+    private void NormalizeLaunch(Rigidbody body, Vector3 chassisVel, Vector3 rel, float speed, float elev)
+    {
+        if (body.isKinematic || speed < exitMinSpeed * 1.5f || _commandedRpm < 1f) return;  // dribbles: leave alone
+        Vector3 up = transform.up;
+        Vector3 horiz = rel - up * Vector3.Dot(rel, up);
+        if (horiz.sqrMagnitude < 1e-6f) return;
+
+        // The hood moved: launch angles from before no longer apply.
+        if (_avgElevCount > 0 && Mathf.Abs(_hoodTarget - _avgElevHood) > 1f) _avgElevCount = 0;
+
+        float n = Mathf.Max(1f, launchAverageShots);
+        float speedPerRpm = speed / _commandedRpm;
+        bool haveSpeed = _avgSpeedCount >= 3, haveElev = _avgElevCount >= 3;
+        if (launchConsistency > 0f && (haveSpeed || haveElev))
+        {
+            float s = haveSpeed ? Mathf.Lerp(speed, _avgSpeedPerRpm * _commandedRpm, launchConsistency) : speed;
+            float e = (haveElev ? Mathf.Lerp(elev, _avgElev, launchConsistency) : elev) * Mathf.Deg2Rad;
+            Vector3 dir = horiz.normalized * Mathf.Cos(e) + up * Mathf.Sin(e);
+            body.velocity = chassisVel + dir * s;
+        }
+
+        _avgSpeedPerRpm = _avgSpeedCount == 0 ? speedPerRpm : Mathf.Lerp(_avgSpeedPerRpm, speedPerRpm, 1f / Mathf.Min(n, _avgSpeedCount + 1));
+        _avgSpeedCount++;
+        _avgElev = _avgElevCount == 0 ? elev : Mathf.Lerp(_avgElev, elev, 1f / Mathf.Min(n, _avgElevCount + 1));
+        if (_avgElevCount == 0) _avgElevHood = _hoodTarget;
+        _avgElevCount++;
     }
 
     private void ReportJams(Vector3 chassisVel)
@@ -440,7 +911,17 @@ public class Obsidian : RebuiltTurretRobot
         }
         float flywheelRpm = 0f;
         if (shooterWheels != null) flywheelRpm = shooterWheels.GetAverageTargetRpm();
-        Debug.Log($"[Obsidian] shooting: {_shotTimes.Count} BPS, aligned {Aligned()}, {turretState}, nearTrench {NearTrench()}, " +
+        string divider = hopperDivider == null ? "" : $"hopper {_hopperFuel}, divider {(hopperDivider.enabled ? "on" : "off")}, ";
+        string shots = "";
+        if (_shotSpeeds.Count > 0)
+        {
+            shots = $"shots {_shotSpeeds.Count}: speed {Range(_shotSpeeds, "F2")} m/s, launch {Range(_shotElevations, "F1")} deg" +
+                    (_shotTurretErr.Count > 0 ? $", turretErr at launch {Range(_shotTurretErr, "F1")} deg" : "") + ", ";
+            _shotSpeeds.Clear();
+            _shotElevations.Clear();
+            _shotTurretErr.Clear();
+        }
+        Debug.Log($"[Obsidian] shooting: {_shotTimes.Count} BPS, {shots}{divider}aligned {Aligned()}, {turretState}, nearTrench {NearTrench()}, " +
                   $"flywheel {flywheelRpm:F0}, " +
                   $"stuck {stuck.Count}" + (stuck.Count > 0 ? ":\n  " + string.Join("\n  ", stuck) : ""));
     }
@@ -673,7 +1154,12 @@ public class Obsidian : RebuiltTurretRobot
         if (intakeJoint != null) intakeJoint.SetLinearTarget(_intakeTarget).withAxis(JointAxis.Z).useAutomaticStartingOffset();
         if (intakeRampPivot != null)
         {
-            Quaternion targetRot = Quaternion.Euler(_intakeDeployed ? 0f : intakeRampFoldAngle, 0f, 0f);
+            // While agitating the ramp flaps with the strokes: folded on each in-stroke, down again on each
+            // out-stroke, which helps shake fuel loose. Once the arm has worked in close to the bumper there is no
+            // room for it to drop, so it stays folded rather than passing through the bumper.
+            bool roomToDrop = Mathf.Abs(_intakeTarget - intakeStowedDistance) >= agitateRampClearance;
+            bool rampDown = _intakeDeployed && (!_agitating || (!_agitateUp && roomToDrop));
+            Quaternion targetRot = Quaternion.Euler(rampDown ? 0f : intakeRampFoldAngle, 0f, 0f);
             intakeRampPivot.localRotation = Quaternion.RotateTowards(intakeRampPivot.localRotation, targetRot, intakeRampFoldSpeed * Time.fixedDeltaTime);
         }
         if (climberJoint != null) climberJoint.SetLinearTarget(_climberTarget).withAxis(climberAxis).useAutomaticStartingOffset();
@@ -805,6 +1291,7 @@ public class Obsidian : RebuiltTurretRobot
     private void SpinUpAndHold()
     {
         float rpm = ManualShoot || flywheelInterpolation == null ? manualShooterRpm : (float)flywheelInterpolation.Interpolate();
+        _commandedRpm = Mathf.Abs(rpm);
         float hood = ManualShoot || hoodInterpolation == null ? manualHoodAngle : (float)hoodInterpolation.Interpolate();
         if (shooterWheels != null) shooterWheels.SetRpm(rpm);
         _hoodTarget = NearTrench() ? hoodStowAngle : Mathf.Clamp(hood, 0f, hoodMaxAngle);
